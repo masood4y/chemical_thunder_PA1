@@ -89,3 +89,17 @@ void rrecv(unsigned short int myUDPport,
            unsigned long long int writeRate)
 {
 }
+
+
+
+Ideas:
+- during TCP set up, agree on a sliding window size
+    - adjust sliding window based on bandwidth and congestion
+
+- Sequence Number based on bytes of Data sent
+    (has to be significantly less than overflow value)
+    - need to handle overflows (wrap around)
+
+- timeout based on earliest packet in sliding window
+
+- Cumulative Acknowledgements (up to this Sequence #)
