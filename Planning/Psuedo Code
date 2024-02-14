@@ -1,0 +1,91 @@
+
+
+Both Server and Client:
+    1: Establishing Connection
+    2: Data Back and Forth
+    3: Terminate/Finish Connection
+        - Client sends FIN request
+        - Host sends ACK for request
+        - Host sends FIN back
+        - Client sends ACK back
+
+
+TCP Client:
+    1: Establishing Connection
+        - 
+    2: Data Back and Forth
+    3: Terminate/Finish Connection
+        - Send FIN Request
+            - Client sends FIN request.
+            - Start timer for timeout after sending.
+        - Wait for Server ACK
+            - if timeout, go to Send FIN Request (resend).
+            - if ACK from Host Recieved, go to next state.
+        - Wait for FIN from Server
+            - if FIN Request from Server is received, send ACK, go to next state
+        - Terminate
+            - terminate as required.
+
+TCP Server:
+    1: Establishing Connection
+        - 
+    2: Data Back and Forth
+        - if FIN request received from Client, go to Terminate/Finish Connection sequence.
+    3: Terminate/Finish Connection
+        - ACK FIN Request
+            - Send ACK for Clients FIN request.
+        - Host sends FIN back
+            - if, FIN request is recieved from client again, go back to ACK FIN Request State.
+            - else, send FIN, start timer, go to waiting for ACK.
+        - Host waiting for ACK from client
+            - if timeout, go to Host sends FIN back
+            - if ACK from Client Recieved, go to next state.
+        - Client sends ACK back
+
+1: Establishing Connection
+2: Data Back and Forth
+3: Terminate/Finish Connection
+    - Client sends FIN request
+    - Host sends ACK for request
+    - Host sends FIN back
+    - Client sends ACK back
+
+
+
+
+structs:
+- TCP Packet
+    - TCP Header
+        - Src Port
+        - Dest Port
+        - Seq #
+        - ACK #
+        - 
+    - TCP Payload
+
+
+1. Client sends connection request (SYN), 
+2. Host sends SYN ACK
+3. Client sends ACK back to complete establishing connection
+4. Client Request Data
+5. Host sends Data
+
+
+
+
+
+
+
+void rsend(char* hostname, 
+            unsigned short int hostUDPport, 
+            char* filename, 
+            unsigned long long int bytesToTransfer)
+{
+   
+}
+
+void rrecv(unsigned short int myUDPport,
+           char *destinationFile,
+           unsigned long long int writeRate)
+{
+}
