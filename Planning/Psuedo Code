@@ -103,3 +103,17 @@ Ideas:
 - timeout based on earliest packet in sliding window
 
 - Cumulative Acknowledgements (up to this Sequence #)
+
+- Have default packet size. if reciever willing to accept less bytes than that, toggle pack size as necessary.
+
+
+
+- TCP struct:
+    - size of Header (maybe constant?)
+    - Size of Data
+    - source and dest port
+    - options()
+    - Max Window size acceptable (in bytes)
+    - Sequence Number
+    - Ack number
+
