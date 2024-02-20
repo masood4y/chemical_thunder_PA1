@@ -31,9 +31,9 @@ Data Exchange:
                 goto: Wait_for_ACK
 
         - Wait_for_ACK: do nothing/wait
-            if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window size, adjust Sliding Window,
+            if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window/packet size, adjust Sliding Window,
                 goto: Send_N_Packets
-            else if (timeout), goto: Send_N_Packets.
+            else if (timeout), adjust window/packet, size goto: Send_N_Packets.
             // else if (no more data flag), goto: 
 
 

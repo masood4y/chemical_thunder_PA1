@@ -1,0 +1,6 @@
+
+// this page is for how the sender/reciever would estimate RTT
+and other timer related calculations
+
+
+
