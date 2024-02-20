@@ -1,0 +1,66 @@
+(timer time, window size, packet size, rtt calculation, writing to file; all determined asynchronously)
+
+Main Categories:
+
+- Connection Set up
+- Data Exchange
+- Connection Teardown
+
+
+
+Connection Setup:
+    Sender States:
+        - Start Connection State: send SYNC bit = 1 (connection request) to dest port #, start timer, wait.
+            if (timer end), go to Start Connection State. 
+            else if (SYNC_ACK received), make window size based on writeRate, set up other details, goto: Send_N_Packets 
+
+    Receiver States:
+        - Wait_Connection: do nothing, wait for connection
+            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
+            else, do nothing/wait. 
+        - Wait_Start: do nothing/wait
+            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
+            else if (SYNC = 0) received with data, add data to file, 
+
+
+
+
+Data Exchange:
+    Sender States:
+        - Send_N_Packets: send all packets in window size available, start timer for first packet sent,
+                goto: Wait_for_ACK
+
+        - Wait_for_ACK: do nothing/wait
+            if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window size, adjust Sliding Window,
+                goto: Send_N_Packets
+            else if (timeout), goto: Send_N_Packets.
+            // else if (no more data flag), goto: 
+
+
+
+    Receiver States:
+        - Wait_for_Packet: do nothing/wait
+            if (valid Seq packet) start small countdown-timer, adjust receive window, update Ack #, goto: Wait_for_Pipeline
+
+
+        - Wait_for_Pipeline: do nothing/wait
+            if (valid Seq packet), adjust receive window, update Ack #, goto: Wait_for_Pipeline
+            if (small countdown timer), send Cumulative Acknowledgement, goto: Wait_for_Packet
+
+
+
+
+
+Connection Teardown:
+    Sender States:
+        - Wait_FIN_Ack: if 
+
+    Receiver States:
+        - Fin_Wait_1 (after sending FIN bit = 1):
+            - if data received, add it to file, stay in this state
+            - else if ack 1 recieved, go to state 
+
+
+
+
+

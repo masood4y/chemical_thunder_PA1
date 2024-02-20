@@ -106,6 +106,8 @@ Ideas:
 
 - Have default packet size. if reciever willing to accept less bytes than that, toggle pack size as necessary.
 
+- buffer/queue incoming packets at both ends. 
+
 
 
 - TCP struct:
