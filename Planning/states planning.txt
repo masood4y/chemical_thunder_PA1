@@ -12,15 +12,17 @@ Connection Setup:
     Sender States:
         - Start Connection State: send SYNC bit = 1 (connection request) to dest port #, start timer, wait.
             if (timer end), go to Start Connection State. 
-            else if (SYNC_ACK received), make window size based on writeRate, set up other details, goto: Send_N_Packets 
+            else if (SYNC_ACK = 1 received), make window size limited by writeRate and Cwnd control stuff,
+                set up other details, goto: Send_N_Packets 
+
 
     Receiver States:
         - Wait_Connection: do nothing, wait for connection
-            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
+            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_for_Packet
             else, do nothing/wait. 
-        - Wait_Start: do nothing/wait
-            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
-            else if (SYNC = 0) received with data, add data to file, 
+        //- Wait_Start: do nothing/wait
+        //    if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
+        //    else if (SYNC = 0) received with data, add data to file, 
 
 
 
@@ -30,21 +32,25 @@ Data Exchange:
         - Send_N_Packets: send all packets in window size available, start timer for first packet sent,
                 goto: Wait_for_ACK
 
+
         - Wait_for_ACK: do nothing/wait
             if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window/packet size, adjust Sliding Window,
                 goto: Send_N_Packets
             else if (timeout), adjust window/packet, size goto: Send_N_Packets.
-            // else if (no more data flag), goto: 
+            else if (all data completely Acknowledged), goto: 
 
 
 
     Receiver States:
         - Wait_for_Packet: do nothing/wait
-            if (valid Seq packet) start small countdown-timer, adjust receive window, update Ack #, goto: Wait_for_Pipeline
+            if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_for_Packet
+            else if (valid Seq packet) start small countdown-timer, adjust receive window, take care of data, update Ack #,
+                goto: Wait_for_Pipeline
+            else if (FIN = 1 received), goto:
 
 
         - Wait_for_Pipeline: do nothing/wait
-            if (valid Seq packet), adjust receive window, update Ack #, goto: Wait_for_Pipeline
+            if (valid Seq packet), adjust receive window, update Ack #, take care of data, goto: Wait_for_Pipeline
             if (small countdown timer), send Cumulative Acknowledgement, goto: Wait_for_Packet
 
 
@@ -53,12 +59,25 @@ Data Exchange:
 
 Connection Teardown:
     Sender States:
-        - Wait_FIN_Ack: if 
+        - Send_FIN: send empty packet with FIN = 1, start timer for this packet,
+                goto: Wait_FIN_Ack
+
+
+        - Wait_FIN_Ack: do nothing/wait
+            if (timeout), goto: Send_FIN
+            else if (FIN_ACK = 1 received), done 
+
+
 
     Receiver States:
-        - Fin_Wait_1 (after sending FIN bit = 1):
-            - if data received, add it to file, stay in this state
-            - else if ack 1 recieved, go to state 
+        - Send FIN_ACK: send FIN_ACK = 1, start long timer, goto: Wait_inCase
+
+        - Wait_inCase: do nothing/wait
+            if (long timer finish), done
+            else if (FIN = 1 received), goto: Send FIN_ACK
+        
+        
+        
 
 
 
