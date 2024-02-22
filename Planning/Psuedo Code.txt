@@ -1,3 +1,27 @@
+Still Need to think about:
+    - Max Packet size
+    - Sender Cwnd + Flow Control stuff
+    - Sender Timer
+    - Writing to file 
+        - have to buffer out of order data
+    - Receiver Window and Cumulative Acknowledgement numbers
+    - Receiver Small Countdown Timer
+    - Receiver long Timer (for connection Teardown)
+
+
+
+ToDo:
+    - Sender and Receiver valid Sequence # and Window size
+        (know what is valid, what is not valid, what is repeat without overflowing/confusing)
+    - Structure of protocol
+    - RTT calculations
+    - 
+
+
+
+
+
+
 
 
 Both Server and Client:

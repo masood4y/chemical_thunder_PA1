@@ -20,10 +20,7 @@ Connection Setup:
         - Wait_Connection: do nothing, wait for connection
             if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_for_Packet
             else, do nothing/wait. 
-        //- Wait_Start: do nothing/wait
-        //    if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_Start
-        //    else if (SYNC = 0) received with data, add data to file, 
-
+     
 
 
 
@@ -46,7 +43,7 @@ Data Exchange:
             if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_for_Packet
             else if (valid Seq packet) start small countdown-timer, adjust receive window, take care of data, update Ack #,
                 goto: Wait_for_Pipeline
-            else if (FIN = 1 received), goto:
+            else if (FIN = 1 received), goto: Send FIN_ACK
 
 
         - Wait_for_Pipeline: do nothing/wait
