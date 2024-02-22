@@ -17,14 +17,17 @@ after all packets Acknowledgement, set a flag or something
 
 
 
-Max Window Size = MaxSeq#/3 
+Max Window Size = Min(MaxSeq#/3, Cwnd calculation, writeRate) 
 
 Sender Window (in bytes of data):
     Acknowledged [10 + Current Window Size + 1 , 9]
     In Flight  [10, 10 + Current Window Size]
 
 Receiver Window (in bytes of data):
-    Received []
+    Received [10 + Max Window Size , 9]
+    Anticipate Next [10, 10 + Max Window Size]
+
+
 
 Sender Packet size (in bytes of data):
 
