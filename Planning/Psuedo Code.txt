@@ -1,5 +1,6 @@
 Still Need to think about:
     - Max Packet size
+    - Current Packet size
     - Sender Cwnd + Flow Control stuff
     - Sender Timer
     - Writing to file 
