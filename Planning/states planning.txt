@@ -34,7 +34,7 @@ Data Exchange:
             if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window/packet size, adjust Sliding Window,
                 goto: Send_N_Packets
             else if (timeout), adjust window/packet, size goto: Send_N_Packets.
-            else if (all data completely Acknowledged), goto: 
+            else if (all data completely Acknowledged), goto: Send_FIN
 
 
 
@@ -43,6 +43,7 @@ Data Exchange:
             if (SYNC = 1 received), send SYNC_ACK = 1 and writeRate back to destination, go to state Wait_for_Packet
             else if (valid Seq packet) start small countdown-timer, adjust receive window, take care of data, update Ack #,
                 goto: Wait_for_Pipeline
+            else if (duplicate packet), send Cumulative Acknowledgement, goto: Wait_for_Packet
             else if (FIN = 1 received), goto: Send FIN_ACK
 
 

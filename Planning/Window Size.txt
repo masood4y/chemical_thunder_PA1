@@ -14,3 +14,17 @@ proposal: Max window size = Max_Seq# / 2
 
 
 after all packets Acknowledgement, set a flag or something
+
+
+
+Max Window Size = MaxSeq#/3 
+
+Sender Window (in bytes of data):
+    Acknowledged [10 + Current Window Size + 1 , 9]
+    In Flight  [10, 10 + Current Window Size]
+
+Receiver Window (in bytes of data):
+    Received []
+
+Sender Packet size (in bytes of data):
+
