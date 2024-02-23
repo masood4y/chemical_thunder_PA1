@@ -17,8 +17,15 @@ after all packets Acknowledgement, set a flag or something
 
 
 
-Max Window Size Sender = Min(MaxSeq#/3, Cwnd calculation, writeRate) 
-Max Window Size Receiver = Min(MaxSeq#/3, writeRate) 
+
+Sender Packet Size:
+    1500 (or something else maybe) bytes of data, 
+    if current window size less than 1500, packet size = current window size
+
+
+Current Window Size Sender = Min(MaxSeq#/3, Cwnd calculation, writeRate) 
+
+Max Window Size Sender and Receiver = Min(MaxSeq#/3, writeRate) 
 
 Sender Window (in bytes of data):
     Acknowledged [10 + Current Window Size + 1 , 9]
@@ -26,10 +33,18 @@ Sender Window (in bytes of data):
         - Add handling for end of Data
 
 Receiver Window (in bytes of data):
-    Received [10 + Max Window Size , 9]
+    Received [10 + Max Window Size + 1, 9]
     Anticipate Next [10, 10 + Max Window Size]
 
 
 
 Sender Packet size (in bytes of data):
+
+
+
+
+2 bytes (short unsigned int)
+
+[0, 2^16 - 1]
+
 

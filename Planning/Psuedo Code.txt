@@ -12,12 +12,26 @@ Still Need to think about:
 
 
 ToDo:
-    - Sender and Receiver valid Sequence # and Window size
+    - DONE: Sender and Receiver valid Sequence # and Window size
         (know what is valid, what is not valid, what is repeat without overflowing/confusing)
-    - Structure of protocol
+    
     - RTT calculations
-    - 
-
+        - Something that runs concurrently in the background (Sender and Receiver)
+        - 
+    - Writing to file
+    - Buffer Size at receiver
+    
+    - UDP connections
+    - Sender Congestion Window management
+        - AIMD (timeout and Acknowledgements)
+        - slowstart
+    - Sender Timeout Timer
+        - set value as 2*Current RTT?
+    - Receiver long timer 
+        - set value as 4*Current RTT?
+    - Receiver Small Countdown Timer
+        - 1/4 RTT
+    - Structure of protocol
 
 
 
