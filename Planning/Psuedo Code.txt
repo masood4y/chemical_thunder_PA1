@@ -35,7 +35,10 @@ ToDo:
 
 
 
-
+TCP Header things:
+    - Source port
+    - Dest Port
+    - 
 
 
 
