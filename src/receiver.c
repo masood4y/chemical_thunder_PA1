@@ -11,9 +11,67 @@
 #include <pthread.h>
 #include <errno.h>
 
+//#define all the defines here
+
+_local static unsigned int receiver_current_state;
+
+
+// enum receiver_event
+// {
+//     /* Connection Setup */
+//     Wait_Connection,
+
+//     /* Receive Data*/
+//     SYNC_RECEIVED,
+//     DUP
+
+//     /* Connection Teardown */
+//     LONG_TIMER_FINISH,
+//     FIN_RECEIVED
+// };
+
+enum receiver_state
+{
+    /* Connection Setup */
+    Wait_Connection,
+
+    /* Receive Data*/
+    Wait_for_Packet,
+    Wait_for_Pipleline,
+
+    /* Connection Teardown */
+    Send_Fin_Ack,
+    Wait_inCase
+};
+
+// 
+_local void receiver_init(void);
+
+/* Connection Setup */
+_local void receiver_action_Wait_Connection(void);
+
+/* Receive Data*/
+_local void receiver_action_Wait_for_Packet(void);
+_local void receiver_action_Wait_for_Pipeline(void);
+
+/* Connection Teardown */
+_local void receiver_action_Send_Fin_Ack(void);
+_local void receiver_action_Wait_inCase(void);
+
+
+
+
+
 void rrecv(unsigned short int myUDPport, 
             char* destinationFile, 
             unsigned long long int writeRate) {
+
+    receiver_init();
+
+    // call initialize
+    // run in a while(1) with switch on states
+
+
 
 }
 

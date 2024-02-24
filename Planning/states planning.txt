@@ -38,6 +38,7 @@ Data Exchange:
                 goto: Send_N_Packets
             else if (timeout), adjust window/packet, size goto: Send_N_Packets.
             else if (all data completely Acknowledged), goto: Send_FIN
+            if (3 duplicate Acknowledgement), in 
 
 
 
