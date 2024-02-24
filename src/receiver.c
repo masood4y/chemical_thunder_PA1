@@ -17,6 +17,8 @@ _local static unsigned int receiver_current_state;
 
 _local static unsigned long long int receiver_write_rate;
 _local static FILE *receiver_file;
+_local static int socket;
+_local static struct sockaddr_in receiver_socket_addr
 
 
 // enum receiver_event
@@ -64,9 +66,6 @@ _local void receiver_action_Send_Fin_Ack(void);
 _local void receiver_action_Wait_inCase(void);
 
 
-
-
-
 void rrecv(unsigned short int myUDPport, 
             char* destinationFile, 
             unsigned long long int writeRate) {
@@ -76,9 +75,6 @@ void rrecv(unsigned short int myUDPport,
         receiver_finish();
         return;
     }
-
-    // call initialize
-    // run in a while(1) with switch on states
 
     while(true) {
         switch(receiver_current_state) {
@@ -119,7 +115,6 @@ bool receiver_init(unsigned short int myUDPport,
     }
 
     // Set socket address for receiving.
-    struct sockaddr_in receiver_socket_addr;
     receiver_socket_addr.sin_family = AF_INET;
     receiver_socket_addr.sin_port = htons(myUDPport);
     receiver_socket_addr.sin_addr = INADDR_ANY; // no-specific IP-address
@@ -147,18 +142,65 @@ bool receiver_init(unsigned short int myUDPport,
     receiver_current_state = Wait_Connection;
 }
 
+// TODO
+void receiver_finish(void) {
+    return;
+}
+
+// TODO: Finish me!
 void receiver_action_Wait_Connection(void) {
-    // Wait for packet...
-    // Listen to port
-    if (SYNC = 1 received) {
-        // set up UDP port, 
-        // set up Receive Window,
-        // send SYNC_ACK = 1 and writeRate back to destination, 
-        receiver_current_state = Wait_for_Packet;
-    } else {
-        // Otherwise we do nothing and just wait.
-        receiver_current_state = Wait_Connection;
+    char[1024] buffer; // FIXME: this is an arbitary value for now.
+    struct sockaddr_in sender_addr;
+    socklen_t addr_size = sizeof(sender_addr);
+
+    // Check for any incoming packets
+    ssize_t packet_size = recvfrom(socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
+
+    if (packet_size > 0) {
+        // TODO: Check if was a SYNC packet.
+        if (SYNC) {
+            // TODO: set up Receive Window,
+            // TODO: send SYNC_ACK = 1 and writeRate back to destination
+            receiver_current_state = Wait_for_Packet;
+        }
+    } else if (packet_size < 0) {
+        perror("Error with recvfrom.");
+        // TODO: handle this?
     }
+    // Otherwise, no data received. Stay in Wait_Connection.
+}
+
+// TODO
+void receiver_action_Wait_for_Packet(void) {
+    char[1024] buffer; // FIXME: this is an arbitary value for now.
+    struct sockaddr_in sender_addr;
+    socklen_t addr_size = sizeof(sender_addr);
+
+    // Check for any incoming packets
+    ssize_t packet_size = recvfrom(socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
+
+    if (packet_size > 0) {
+        // TODO: Handle checking if valid seq packet, duplicate, finish, etc.
+    } else if (packet_size < 0) {
+        perror("Error with recvfrom.");
+        // TODO: handle this?
+    }
+    // Otherwise, no data received. Stay in Wait_for_Packet.
+}
+
+// TODO
+void receiver_action_Wait_for_Pipeline(void) {
+    return;
+}
+
+// TODO
+void receiver_action_Send_Fin_Ack(void) {
+    return;
+}
+
+// TODO
+void receiver_action_Wait_inCase(void) {
+    return;
 }
 
 int main(int argc, char** argv) {
