@@ -28,17 +28,20 @@ ToDo:
     - Sender Timeout Timer
         - set value as 2*Current RTT?
     - Receiver long timer 
-        - set value as 4*Current RTT?
+        - set value as 10 seconds 
     - Receiver Small Countdown Timer
-        - 1/4 RTT
+        - 100 ms 
     - Structure of protocol
 
 
 
 TCP Header things:
-    - Source port
-    - Dest Port
-    - 
+
+    - Sync bit
+    - Sync ACK bit
+    - Sequence Number  (uint16_t)
+
+    - Write rate (unsigned short int )
 
 
 

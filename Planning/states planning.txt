@@ -10,7 +10,6 @@ Main Categories:
 
 Connection Setup:
     Sender States:
-            - set up listening port before anything
         - Start Connection State: send SYNC bit = 1 (connection request) to dest port #, 
                 start timer, wait.
             if (timer end), go to Start Connection State. 
@@ -34,7 +33,7 @@ Data Exchange:
 
 
         - Wait_for_ACK: do nothing/wait
-            if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window/packet size, adjust Sliding Window,
+            if (ACK_Valid_received (its a proper Acknowledgement for valid seq#)), update window/packet size, adjust Sliding Window, bytesleft
                 goto: Send_N_Packets
             else if (timeout), adjust window/packet, size goto: Send_N_Packets.
             else if (all data completely Acknowledged), goto: Send_FIN
