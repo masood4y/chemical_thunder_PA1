@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
     filename = argv[3];
     bytesToTransfer = atoll(argv[4]);
 
-    rsend(hostname, hostUDPport, filename, bytesToTransfer)
+    rsend(hostname, hostUDPport, filename, bytesToTransfer);
 
     return (EXIT_SUCCESS);
 }
