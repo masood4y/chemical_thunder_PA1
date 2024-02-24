@@ -48,3 +48,29 @@ Sender Packet size (in bytes of data):
 [0, 2^16 - 1]
 
 
+========== Pseudocode for CWND calcs ==========
+- Initially, ssthresh is infinity.
+- cwnd = 1 MSS.
+
+Slow Start:
+    - Exponentially increase window size (cwnd) until >= sshthresh.
+    IF loss:
+        ssthresh = cwnd / 2.
+        IF timeout:
+            cwnd = 1 MSS.
+            GOTO Slow Start.
+        IF triple duplicate ACK:
+            cwnd = ssthresh + 3
+            GOTO Congestion Avoidance (linearly grow).
+
+
+Congestion Avoidance:
+    - Increase cwnd by constant each transmission round.
+    IF loss:
+        IF timeout:
+            cwnd = 1.
+            GOTO Slow Start.
+        IF triple duplicate ACK:
+            ssthresh = cwnd / 2.
+            cwnd = ssthresh + 3.
+            - Now just continue linearly growing from here (so stay in Congestion Avoidance).
