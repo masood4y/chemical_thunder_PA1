@@ -2,5 +2,39 @@
 // this page is for how the sender/reciever would estimate RTT
 and other timer related calculations
 
+alpha = typically 0.125
+EstimatedRTT = (1- alpha) * EstimatedRTT + alpha * SampleRTT
 
+SampleRTT is taken by tracking the RTT for ONE packet per RTT.
+Ie: I pick packet i to be tracked. I start a timer when I send it, and stop the timer oncce it is ACK'd.
 
+For TCP, timeouts are generally (DevRTT is safety margin)
+beta = typically 0.25
+TimeoutInterval = EstimatedRTT + 4 * DevRTT
+DevRTT = (1 - beta) * DevRTT + beta * |SampleRTT - EstimatedRTT|
+
+========== Pseudocode ==========
+Outside of updateRTT:
+- Have some flag or condition to know we need to track the next outgoing packet
+- When sending the packet, if flag is set, record current time to start timer.
+- Now, everytime a packet is ack'd, check if the acknowledgement includes this packet (using cumulative ack).
+    - if it matches, record current time to finish timer.
+    - call updateRTT function using sampleRTT.
+
+Define alpha and beta as constants, have estimatedRTT, and timeoutInterval be global variables.
+Also have an variable so we know which packet we are tracking.
+
+#define ALPHA 0.125
+#define BETA 0.25
+
+Updates the estimatedRTT value, along with the timeout value.
+updateRTT(double sampleRTT) {
+    // Update estimated RTT using new sample RTT value.
+    estimatedRTT = (1- alpha) * estimatedRTT + alpha * sampleRTT
+    
+    // Update "safety margin" for timeout intervals.
+    devRTT = (1 - beta) * devRTT + beta * |sampleRTT - estimatedRTT|
+
+    // Update timeout interval using this newly estimated RTT and safety margin.
+    timeoutInterval = estimatedRTT + 4 * devRTT
+}
