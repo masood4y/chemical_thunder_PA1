@@ -145,6 +145,7 @@ bool receiver_init(unsigned short int myUDPport,
     
     // Set default values.
     receiver_current_state = Wait_Connection;
+    return true;
 }
 
 // TODO
