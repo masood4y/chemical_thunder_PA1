@@ -14,12 +14,15 @@
 #include "our_protocol.h"
 
 //#define all the defines here
+#define LONG_TIMER_MS 500 // 0.5s
 
 _local static unsigned int receiver_current_state;
 
 _local static unsigned long long int receiver_write_rate;
 _local static FILE *receiver_file;
 _local static int socket;
+
+_local static time_t timer_start;
 
 
 // enum receiver_event
@@ -47,7 +50,8 @@ enum receiver_state
 
     /* Connection Teardown */
     Send_Fin_Ack,
-    Wait_inCase
+    Wait_inCase,
+    Finished
 };
 
 // Initialization.
@@ -82,7 +86,7 @@ void rrecv(unsigned short int myUDPport,
         return;
     }
 
-    while(true) {
+    while(receiver_current_state != Finished) {
         switch(receiver_current_state) {
             case(Wait_Connection):
                 receiver_action_Wait_Connection();
@@ -102,6 +106,7 @@ void rrecv(unsigned short int myUDPport,
         }
     }
 
+    receiver_finish();
 }
 
 // FIXME: IF errors occur, should destroy/close everything.
@@ -203,7 +208,7 @@ void receiver_action_Wait_Connection(void) {
             // Now connect to the sender, as we only want to communicate with this sender.
             if (connect(socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
                 perror("Error connecting to sender.");
-                // TODO: handle this?
+                // FIXME: handle this?
             }
 
             // TODO: set up Receive Window
@@ -213,14 +218,14 @@ void receiver_action_Wait_Connection(void) {
             size_t packet_size = sizeof(SYNC_ACK_packet);
             if (send(socket, sync_ack_packet, packet_size, 0) < 0) {
                 perror("Error with sending SYNC_ACK.");
-                // TODO: Handle this?
+                // FIXME: Handle this?
             }
             
             receiver_current_state = Wait_for_Packet;
         }
     } else if (packet_size < 0) {
         perror("Error with recvfrom.");
-        // TODO: handle this?
+        // FIXME: handle this?
     }
     // Otherwise, no data received. Stay in Wait_Connection.
 }
@@ -237,10 +242,11 @@ void receiver_action_Wait_for_Packet(void) {
         if (is_data(buffer)) {
             // Check if valid sequence packet or is a duplicate.
             if (is_duplicate(buffer)) {
-                // Duplicate, send cumulative ACK right away.
-                // TODO
+                // TODO: Duplicate, send cumulative ACK right away.
+
             } else {
-                // TODO: start small countdown-timer, adjust receive window, take care of data, update Ack #...
+                // Start small countdown-timer, adjust receive window, take care of data, update Ack #...
+                timer_start = clock();
                 receiver_current_state = Wait_for_Pipeline;
             }
         } else if (is_FIN(buffer)) {
@@ -248,33 +254,60 @@ void receiver_action_Wait_for_Packet(void) {
         }
     } else if (packet_size < 0) {
         perror("Error with recv.");
-        // TODO: handle this?
+        // FIXME: handle this?
     }
     // Otherwise, no data received. Stay in Wait_for_Packet.
 }
 
 // TODO
 void receiver_action_Wait_for_Pipeline(void) {
-    return;
+    if (packet_size > 0) {
+        // TODO: Check if valid seq data packet...
+    
+    } else {
+        perror("Error with recv while waiting for pipeline.");
+        // FIXME: handle this?
+    }
 }
 
-// TODO: Finish me
+// Send FIN_ACK back to sender.
 void receiver_action_Send_Fin_Ack(void) {
-    // Send SYNC_ACK back to sender to complete handshaking.
-    char[] FIN_ACK_packet = "FIN_ACK"; // FIXME!
-    size_t packet_size = sizeof(FIN_ACK_packet);
-    if (send(socket, FIN_ACK_packet, packet_size, 0) < 0) {
+    // Construct FIN_ACK packet.
+    struct FIN_ACK_packet;
+    memset(&fin_ack_packet, 0, sizeof(fin_ack_packet));
+
+    FIN_ACK_packet.header.management_byte = 0x1; // FIN_ACK bit
+    // Everything else should already be zero'd...
+    
+    if (send(socket, &FIN_ACK_packet, sizeof(FIN_ACK_packet), 0) < 0) {
         perror("Error with sending FIN_ACK.");
-        // TODO: Handle this?
+        // FIXME: Handle this?
     }
 
-    // TODO: start long timer and goto wait in-case
+    // Start the long timer and goto wait in-case...
+    timer_start = clock();
     receiver_current_state = Wait_inCase;
 }
 
-// TODO
+// Wait for a long time just in-case we get another FIN packet.
 void receiver_action_Wait_inCase(void) {
-    return;
+    // Check for any incoming FINs (just in-case)...
+    char[1024] buffer; // FIXME: this is an arbitary value for now.
+    ssize_t packet_size = recv(socket, buffer, sizeof(buffer), 0);
+
+    if (packet_size > 0 && is_FIN(buffer)) {
+        receiver_current_state = Send_Fin_Ack;
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // No packet received.
+        clock_t time_elapsed_ms = (clock() - timer_start) * 1000 / CLOCKS_PER_SEC;
+        
+        if (time_elapsed_ms > LONG_TIMER_MS) {
+            receiver_current_state = Finished;
+        }
+    } else {
+        perror("Error with recv while waiting in-case.");
+        // FIXME: Handle this?
+    }
 }
 
 int main(int argc, char** argv) {
