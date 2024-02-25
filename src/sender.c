@@ -26,7 +26,8 @@ _local static uint16_t in_Flight[2];
 extern volatile static uint16_t current_window_size;
 extern volatile static double RTT_in_ms;
 
-_local const static uint16_t max_window_size = 21845; // max uint16_t / 3
+
+_local const static uint16_t max_window_size = 21845; /* Set as (uint16_t / 3) */ 
 
 _local static clock_t start, end;
 _local static double cpu_time_used_in_seconds;
@@ -52,7 +53,7 @@ enum sender_state
 _local void sender_init(void);
 _local bool open_file(char* filename, unsigned long long int bytesToTransfer);
 
-// close file
+//TODO: close file, close socket
 _local void sender_finish(void);
 
 /* Connection Setup */
@@ -73,86 +74,23 @@ _local bool sender_init(char* filename, unsigned long long int bytesToTransfer,
                         char* hostname, unsigned short int hostUDPport)
 {
 
-    // set up udp socket for listening and sending
-
-    // set up statemachine
-
-
-
-
-
     /* File related initialization */
     if (!open_file(filename, bytesToTransfer))
     {
         return false;
     }
 
-    // // open udp port to hostname for sending
-    // // Define the hostname and port
-
-    // // Resolve the hostname to an IP address
-    // struct hostent *host = gethostbyname(hostname);
-    // if (host == NULL) {
-    //     fprintf(stderr, "Error: Could not resolve hostname.\n");
-    //     return false;
-    // }
-
-    // // Create a UDP socket
-    // int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // if (sockfd < 0) {
-    //     perror("Error opening socket");
-    //     return false;
-    // }
-
-    // // Set up the server address structure
-    // struct sockaddr_in server_addr;
-    // memset(&server_addr, 0, sizeof(server_addr));
-    // server_addr.sin_family = AF_INET;
-    // server_addr.sin_port = htons(hostUDPport); 
-    // memcpy(&server_addr.sin_addr, host->h_addr, host->h_length);
-
-    // // // Example: Sending data (you can replace this with your own data sending logic)
-    // // const char *message = "Hello, UDP server!";
-    // // int message_len = strlen(message);
-
-    // // // Send data to the server
-    // // ssize_t bytes_sent = sendto(sockfd, message, message_len, 0,
-    // //                              (struct sockaddr *)&server_addr, sizeof(server_addr));
-    // // if (bytes_sent < 0) {
-    // //     perror("Error sending data");
-    // //     close(sockfd);
-    // //     exit(1);
-    // // }
-
-    // // printf("Sent %zd bytes to %s:%s\n", bytes_sent, hostname, portname);
-
-    // // Listening for response
-    // struct sockaddr_in client_addr;
-    // socklen_t client_len = sizeof(client_addr);
-    // char buffer[MAX_BUFFER_SIZE];
-    // ssize_t bytes_received = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0,
-    //                                   (struct sockaddr *)&client_addr, &client_len);
-    // if (bytes_received < 0) {
-    //     perror("Error receiving data");
-    //     close(sockfd);
-    //     exit(1);
-    // }
-
-    // printf("Received %zd bytes from %s:%d\n", bytes_received,
-    //        inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-    // printf("Message received: %s\n", buffer);
-
-    // // Close the socket
-    // close(sockfd);
+    //TODO: Set up UDP socket for listening and Sending
 
 
 
-
-
-
-
-
-    // set up state machine
+    
+    //TODO: set up sliding window
+        // acknowledged[];
+        // acknowledged[2];
+        // in_Flight[2];
+   
+    /* Set up State machine */
     sender_current_state = Start_Connection;
     return true;
 }
@@ -164,20 +102,21 @@ _local bool open_file(char* filename, unsigned long long int bytesToTransfer)
         fprintf(stderr, "Error: Could not open filename.\n");
         return false;
     }
-
     
-    // get file size
+    /* Get File Size */
     long long file_size;
-    bytes_left_to_send = bytesToTransfer;
+    
     fseek(file_pointer, 0, SEEK_END);
     file_size = ftell(file_pointer);
     fseek(file_pointer, 0, SEEK_SET);
     
-    // set bytes_left_to_send as MIN(bytesToTransfer, Filesize)
+    /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
     if (file_size < bytesToTransfer) {
         bytes_left_to_send = file_size;
     }
-
+    else {
+        bytes_left_to_send = bytesToTransfer;
+    }
     return true;
 }
 
@@ -286,23 +225,44 @@ void rsend(char* hostname,
         return error;
     }
 
-    
+    while (1) 
+    {
+        //TODO: figure out how to break from while(1) loop at the end
+        switch (sender_current_state) 
+        {
+            /* Connection Setup */
+            case Start_Connection:
+                sender_action_Start_Connection();
+                break;
 
 
+            /* Send Data*/
+            case Send_N_Packets:
+                sender_action_Send_N_Packets();
+                break;
+
+            case Wait_for_Ack:
+                sender_action_Wait_for_Ack();
+                break;
 
 
-    while (1) {
-        // loop over states and call their functions
+            /* Connection Teardown */
+            case Send_Fin:
+                sender_action_Send_Fin();
+                break;
+
+            case Wait_Fin_Ack:
+                sender_action_Wait_Fin_Ack();
+                break;
+
+            default: 
+        }    
     }
-
     sender_finish();
 }
 
 int main(int argc, char** argv) {
-    // This is a skeleton of a main function.
-    // You should implement this function more completely
-    // so that one can invoke the file transfer from the
-    // command line.
+
     int hostUDPport;
     unsigned long long int bytesToTransfer;
     char* hostname = NULL;
