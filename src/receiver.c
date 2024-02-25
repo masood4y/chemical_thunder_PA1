@@ -12,17 +12,19 @@
 #include <errno.h>
 
 #include "our_protocol.h"
+#include <stdbool.h>
+#include <fcntl.h>
 
 //#define all the defines here
 #define LONG_TIMER_MS 500 // 0.5s
 
-_local static unsigned int receiver_current_state;
+static unsigned int receiver_current_state;
 
-_local static unsigned long long int receiver_write_rate;
-_local static FILE *receiver_file;
-_local static int socket;
+static unsigned long long int receiver_write_rate;
+static FILE *receiver_file;
+static int receiver_socket;
 
-_local static time_t timer_start;
+static time_t timer_start;
 
 
 // enum receiver_event
@@ -55,25 +57,25 @@ enum receiver_state
 };
 
 // Initialization.
-_local bool receiver_init(void);
+bool receiver_init(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate);
 // Closing file, socket, etc.
-_local void receiver_finish(void);
+void receiver_finish(void);
 
 /* Checking packets */
-_local bool is_SYNC(const char* packet);
-_local bool is_data(const char* packet);
-_local bool is_FIN(const char* packet);
+bool is_SYNC(const char* packet);
+bool is_data(const char* packet);
+bool is_FIN(const char* packet);
 
 /* Connection Setup */
-_local void receiver_action_Wait_Connection(void);
+void receiver_action_Wait_Connection(void);
 
 /* Receive Data*/
-_local void receiver_action_Wait_for_Packet(void);
-_local void receiver_action_Wait_for_Pipeline(void);
+void receiver_action_Wait_for_Packet(void);
+void receiver_action_Wait_for_Pipeline(void);
 
 /* Connection Teardown */
-_local void receiver_action_Send_Fin_Ack(void);
-_local void receiver_action_Wait_inCase(void);
+void receiver_action_Send_Fin_Ack(void);
+void receiver_action_Wait_inCase(void);
 
 
 void rrecv(unsigned short int myUDPport, 
@@ -114,25 +116,26 @@ bool receiver_init(unsigned short int myUDPport,
             char* destinationFile, 
             unsigned long long int writeRate) {
     // Create the UDP socket.
-    socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socket < 0) {
+    receiver_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (receiver_socket < 0) {
         perror("Error with creating socket.");
         return false;
     }
     
     // Set the socket as non-blocking.
-    if (fcntl(socket, FSETFL, fcntl(socket, FGETFL, 0) | O_NONBLOCK)) {
+    if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETL, 0) | O_NONBLOCK)) {
         perror("Error with setting socket flags.");
         return false;
     }
 
     // Set socket address for receiving.
+    struct sockaddr_in receiver_socket_addr;
     receiver_socket_addr.sin_family = AF_INET;
     receiver_socket_addr.sin_port = htons(myUDPport);
     receiver_socket_addr.sin_addr = INADDR_ANY; // no-specific IP-address
 
     // Bind the socket to the address and port.
-    if (bind(socket, (struct sockaddr *)receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
+    if (bind(receiver_socket, (struct sockaddr *)receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
         perror("Error binding to the port.");
         return false;
     }
@@ -162,51 +165,51 @@ void receiver_finish(void) {
 }
 
 // Checks if incoming packet is valid SYNC packet.
-bool is_SYNC(const char* packet) {
-    if (size < 0) {
+bool is_SYNC(const char* buffer) {
+    if (sizeof < 0) {
         return false;
     }
     
-    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     uint8_t SYNC_bit = header.management_byte & 0x80; // SYNC is upper-most bit.
     return SYNC_bit == 1;
 }
 
 // Checks if incoming packet is data packet (management byte is required to be zero for data).
-bool is_data(const char* packet) {
+bool is_data(const char* buffer) {
     if (size < 0) {
         return false;
     }
 
-    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     return header.management_byte == 0;
 }
 
 // Checks if incoming packet is valid FIN packet.
-bool is_FIN(const char* packet) {
+bool is_FIN(const char* buffer) {
     if (size < 0) {
         return false;
     }
     
-    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     uint8_t FIN_bit = header.management_byte & 0x1; // FIN is second lower-most bit.
     return FIN_bit == 1;
 }
 
 // TODO: Finish me!
 void receiver_action_Wait_Connection(void) {
-    char[1024] buffer; // FIXME: this is an arbitary value for now.
+    char buffer[1024]; // FIXME: this is an arbitary value for now.
     struct sockaddr_in sender_addr;
     socklen_t addr_size = sizeof(sender_addr);
 
     // Check for any incoming packets
-    ssize_t packet_size = recvfrom(socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
+    ssize_t packet_size = recvfrom(receiver_socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
 
     if (packet_size > 0) {
         // Check if was a SYNC packet.
         if (is_SYNC(buffer)) {
             // Now connect to the sender, as we only want to communicate with this sender.
-            if (connect(socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
+            if (connect(receiver_socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
                 perror("Error connecting to sender.");
                 // FIXME: handle this?
             }
@@ -214,9 +217,9 @@ void receiver_action_Wait_Connection(void) {
             // TODO: set up Receive Window
 
             // Send SYNC_ACK back to sender to complete handshaking.
-            char[] SYNC_ACK_packet = "SYNC_ACK"; // FIXME!
+            char SYNC_ACK_packet[] = "SYNC_ACK"; // FIXME!
             size_t packet_size = sizeof(SYNC_ACK_packet);
-            if (send(socket, sync_ack_packet, packet_size, 0) < 0) {
+            if (send(receiver_socket, sync_ack_packet, packet_size, 0) < 0) {
                 perror("Error with sending SYNC_ACK.");
                 // FIXME: Handle this?
             }
@@ -232,10 +235,10 @@ void receiver_action_Wait_Connection(void) {
 
 // TODO
 void receiver_action_Wait_for_Packet(void) {
-    char[1024] buffer; // FIXME: this is an arbitary value for now.
+    char buffer[1024]; // FIXME: this is an arbitary value for now.
 
     // Check for any incoming packets
-    ssize_t packet_size = recv(socket, buffer, sizeof(buffer), 0);
+    ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
 
     if (packet_size > 0) {
         // Handle checking if valid seq packet, duplicate, finish, etc.
@@ -261,10 +264,17 @@ void receiver_action_Wait_for_Packet(void) {
 
 // TODO
 void receiver_action_Wait_for_Pipeline(void) {
-    if (packet_size > 0) {
+    // Check for any incoming FINs (just in-case)...
+    char buffer[1024]; // FIXME: this is an arbitary value for now.
+    ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
+
+    if (packet_size > 0 && is_data(buffer))
         // TODO: Check if valid seq data packet...
     
-    } else {
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // TODO: No packet received.
+
+    else {
         perror("Error with recv while waiting for pipeline.");
         // FIXME: handle this?
     }
@@ -274,12 +284,12 @@ void receiver_action_Wait_for_Pipeline(void) {
 void receiver_action_Send_Fin_Ack(void) {
     // Construct FIN_ACK packet.
     struct FIN_ACK_packet;
-    memset(&fin_ack_packet, 0, sizeof(fin_ack_packet));
+    memset(&FIN_ack_packet, 0, sizeof(fin_ack_packet));
 
     FIN_ACK_packet.header.management_byte = 0x1; // FIN_ACK bit
     // Everything else should already be zero'd...
     
-    if (send(socket, &FIN_ACK_packet, sizeof(FIN_ACK_packet), 0) < 0) {
+    if (send(receiver_socket, &FIN_ACK_packet, sizeof(FIN_ACK_packet), 0) < 0) {
         perror("Error with sending FIN_ACK.");
         // FIXME: Handle this?
     }
@@ -292,8 +302,8 @@ void receiver_action_Send_Fin_Ack(void) {
 // Wait for a long time just in-case we get another FIN packet.
 void receiver_action_Wait_inCase(void) {
     // Check for any incoming FINs (just in-case)...
-    char[1024] buffer; // FIXME: this is an arbitary value for now.
-    ssize_t packet_size = recv(socket, buffer, sizeof(buffer), 0);
+    char buffer[1024]; // FIXME: this is an arbitary value for now.
+    ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
 
     if (packet_size > 0 && is_FIN(buffer)) {
         receiver_current_state = Send_Fin_Ack;
@@ -318,7 +328,7 @@ int main(int argc, char** argv) {
 
     unsigned short int udpPort;
     char* filename = NULL;
-    unsinged long long int writeRate = 0; // FIXME: this is just default (no limit), will need to be fixed later on.
+    unsigned long long int writeRate = 0; // FIXME: this is just default (no limit), will need to be fixed later on.
 
     if (argc != 3) {
         fprintf(stderr, "usage: %s UDP_port filename_to_write\n\n", argv[0]);
