@@ -18,7 +18,6 @@ _local static unsigned int receiver_current_state;
 _local static unsigned long long int receiver_write_rate;
 _local static FILE *receiver_file;
 _local static int socket;
-_local static struct sockaddr_in receiver_socket_addr
 
 
 // enum receiver_event
@@ -42,7 +41,7 @@ enum receiver_state
 
     /* Receive Data*/
     Wait_for_Packet,
-    Wait_for_Pipleline,
+    Wait_for_Pipeline,
 
     /* Connection Teardown */
     Send_Fin_Ack,
@@ -53,6 +52,11 @@ enum receiver_state
 _local bool receiver_init(void);
 // Closing file, socket, etc.
 _local void receiver_finish(void);
+
+/* Checking packets */
+_local bool is_SYNC(const char* buffer);
+_local bool is_data(const char* buffer);
+_local bool is_FIN(const char* buffer);
 
 /* Connection Setup */
 _local void receiver_action_Wait_Connection(void);
@@ -84,7 +88,7 @@ void rrecv(unsigned short int myUDPport,
             case(Wait_for_Packet):
                 receiver_action_Wait_for_Packet();
                 break;
-            case(Wait_for_Pipleline):
+            case(Wait_for_Pipeline):
                 receiver_action_Wait_for_Pipeline();
                 break;
             case(Send_Fin_Ack):
@@ -98,6 +102,7 @@ void rrecv(unsigned short int myUDPport,
 
 }
 
+// FIXME: IF errors occur, should destroy/close everything.
 bool receiver_init(unsigned short int myUDPport, 
             char* destinationFile, 
             unsigned long long int writeRate) {
@@ -147,6 +152,25 @@ void receiver_finish(void) {
     return;
 }
 
+// TODO, checks if incoming packet is valid SYNC packet.
+bool is_SYNC(const char* buffer) {
+    if (size < 0) {
+        return false;
+    }
+
+    return true;
+}
+
+// TODO
+bool is_data(const char* buffer) {
+    return true;
+}
+
+// TODO
+bool is_FIN(const char* buffer) {
+    return true;
+}
+
 // TODO: Finish me!
 void receiver_action_Wait_Connection(void) {
     char[1024] buffer; // FIXME: this is an arbitary value for now.
@@ -157,10 +181,24 @@ void receiver_action_Wait_Connection(void) {
     ssize_t packet_size = recvfrom(socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
 
     if (packet_size > 0) {
-        // TODO: Check if was a SYNC packet.
-        if (SYNC) {
-            // TODO: set up Receive Window,
-            // TODO: send SYNC_ACK = 1 and writeRate back to destination
+        // Check if was a SYNC packet.
+        if (is_SYNC(buffer)) {
+            // Now connect to the sender, as we only want to communicate with this sender.
+            if (connect(socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
+                perror("Error connecting to sender.");
+                // TODO: handle this?
+            }
+
+            // TODO: set up Receive Window
+
+            // Send SYNC_ACK back to sender to complete handshaking.
+            char[] SYNC_ACK_packet = "SYNC_ACK"; // FIXME!
+            size_t packet_size = sizeof(SYNC_ACK_packet);
+            if (send(socket, sync_ack_packet, packet_size, 0) < 0) {
+                perror("Error with sending SYNC_ACK.");
+                // TODO: Handle this?
+            }
+            
             receiver_current_state = Wait_for_Packet;
         }
     } else if (packet_size < 0) {
@@ -173,16 +211,26 @@ void receiver_action_Wait_Connection(void) {
 // TODO
 void receiver_action_Wait_for_Packet(void) {
     char[1024] buffer; // FIXME: this is an arbitary value for now.
-    struct sockaddr_in sender_addr;
-    socklen_t addr_size = sizeof(sender_addr);
 
     // Check for any incoming packets
-    ssize_t packet_size = recvfrom(socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&sender_addr, &addr_size);
+    ssize_t packet_size = recv(socket, buffer, sizeof(buffer), 0);
 
     if (packet_size > 0) {
-        // TODO: Handle checking if valid seq packet, duplicate, finish, etc.
+        // Handle checking if valid seq packet, duplicate, finish, etc.
+        if (is_data(buffer)) {
+            // Check if valid sequence packet or is a duplicate.
+            if (is_duplicate(buffer)) {
+                // Duplicate, send cumulative ACK right away.
+                // TODO
+            } else {
+                // TODO: start small countdown-timer, adjust receive window, take care of data, update Ack #...
+                receiver_current_state = Wait_for_Pipeline;
+            }
+        } else if (is_FIN(buffer)) {
+            receiver_current_state = Send_Fin_Ack;
+        }
     } else if (packet_size < 0) {
-        perror("Error with recvfrom.");
+        perror("Error with recv.");
         // TODO: handle this?
     }
     // Otherwise, no data received. Stay in Wait_for_Packet.
@@ -193,9 +241,18 @@ void receiver_action_Wait_for_Pipeline(void) {
     return;
 }
 
-// TODO
+// TODO: Finish me
 void receiver_action_Send_Fin_Ack(void) {
-    return;
+    // Send SYNC_ACK back to sender to complete handshaking.
+    char[] FIN_ACK_packet = "FIN_ACK"; // FIXME!
+    size_t packet_size = sizeof(FIN_ACK_packet);
+    if (send(socket, FIN_ACK_packet, packet_size, 0) < 0) {
+        perror("Error with sending FIN_ACK.");
+        // TODO: Handle this?
+    }
+
+    // TODO: start long timer and goto wait in-case
+    receiver_current_state = Wait_inCase;
 }
 
 // TODO
