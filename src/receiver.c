@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <errno.h>
 
+#include "our_protocol.h"
+
 //#define all the defines here
 
 _local static unsigned int receiver_current_state;
@@ -54,9 +56,9 @@ _local bool receiver_init(void);
 _local void receiver_finish(void);
 
 /* Checking packets */
-_local bool is_SYNC(const char* buffer);
-_local bool is_data(const char* buffer);
-_local bool is_FIN(const char* buffer);
+_local bool is_SYNC(const char* packet);
+_local bool is_data(const char* packet);
+_local bool is_FIN(const char* packet);
 
 /* Connection Setup */
 _local void receiver_action_Wait_Connection(void);
@@ -145,6 +147,8 @@ bool receiver_init(unsigned short int myUDPport,
     
     // Set default values.
     receiver_current_state = Wait_Connection;
+
+    return true;
 }
 
 // TODO
@@ -152,23 +156,36 @@ void receiver_finish(void) {
     return;
 }
 
-// TODO, checks if incoming packet is valid SYNC packet.
-bool is_SYNC(const char* buffer) {
+// Checks if incoming packet is valid SYNC packet.
+bool is_SYNC(const char* packet) {
+    if (size < 0) {
+        return false;
+    }
+    
+    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    uint8_t SYNC_bit = header.management_byte & 0x80; // SYNC is upper-most bit.
+    return SYNC_bit == 1;
+}
+
+// Checks if incoming packet is data packet (management byte is required to be zero for data).
+bool is_data(const char* packet) {
     if (size < 0) {
         return false;
     }
 
-    return true;
+    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    return header.management_byte == 0;
 }
 
-// TODO
-bool is_data(const char* buffer) {
-    return true;
-}
-
-// TODO
-bool is_FIN(const char* buffer) {
-    return true;
+// Checks if incoming packet is valid FIN packet.
+bool is_FIN(const char* packet) {
+    if (size < 0) {
+        return false;
+    }
+    
+    struct protocol_Header packet_header = ((struct protocol_Packet *)buffer)->header;
+    uint8_t FIN_bit = header.management_byte & 0x1; // FIN is second lower-most bit.
+    return FIN_bit == 1;
 }
 
 // TODO: Finish me!

@@ -25,6 +25,6 @@ struct protocol_Header
 
 struct protocol_Packet
 {
-    struct protocol_Header;
-    char[1450];
+    struct protocol_Header header;
+    char[1450] data;
 }
