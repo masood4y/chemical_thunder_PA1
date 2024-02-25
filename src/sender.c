@@ -19,7 +19,7 @@
 _local static unsigned int sender_current_state;
 _local static unsigned long long int bytes_left_to_send;
 _local static FILE *file_pointer;
-// Socket
+_local static int sockfd;
 
 _local static uint16_t acknowledged[2];
 _local static uint16_t in_Flight[2];
@@ -80,16 +80,63 @@ _local bool sender_init(char* filename, unsigned long long int bytesToTransfer,
         return false;
     }
 
-    //TODO: Set up UDP socket for listening and Sending
 
-
+    /* Socket Set up for Listening and Sending to hostname */
+    if (!setup_socket(hostname, hostUDPport))
+    {
+        return false;
+    }
 
     
+    
+    // // Main loop for bidirectional communication
+    // while (1) {
+    //     // Receive data (non-blocking)
+    //     ssize_t bytes_received = recv(sockfd, buffer, MAX_BUFFER_SIZE, MSG_DONTWAIT);
+    //     if (bytes_received > 0) {
+    //         printf("Received %zd bytes\n", bytes_received);
+    //         printf("Message received: %s\n", buffer);
+    //     } else if (bytes_received == 0) {
+    //         printf("Connection closed by peer\n");
+    //         break;
+    //     } else if (bytes_received == -1) {
+    //         // Check if the error is due to the socket being non-blocking
+    //         if (errno != EAGAIN && errno != EWOULDBLOCK) {
+    //             perror("Error receiving data");
+    //             close(sockfd);
+    //             exit(EXIT_FAILURE);
+    //         }
+    //     }
+
+    //     // Send data
+    //     const char *message = "Hello, UDP server!";
+    //     int message_len = strlen(message);
+    //     ssize_t bytes_sent = send(sockfd, message, message_len, 0);
+    //     if (bytes_sent < 0) {
+    //         perror("Error sending data");
+    //         close(sockfd);
+    //         exit(EXIT_FAILURE);
+    //     }
+
+    //     printf("Sent %zd bytes\n", bytes_sent);
+
+    //     // Sleep for a short interval to prevent busy-waiting
+    //     usleep(100000); // 100 ms
+    // }
+
+    // // Close the socket (not reached in this example)
+    // close(sockfd);
+
+
+
     //TODO: set up sliding window
         // acknowledged[];
         // acknowledged[2];
         // in_Flight[2];
    
+
+
+
     /* Set up State machine */
     sender_current_state = Start_Connection;
     return true;
@@ -119,7 +166,66 @@ _local bool open_file(char* filename, unsigned long long int bytesToTransfer)
     }
     return true;
 }
+_local bool setup_socket(char* hostname, unsigned short int hostUDPport) {
 
+    struct sockaddr_in receiver_address;
+    struct hostent *host;
+    sockfd = -1;
+
+    /* Resolve the hostname */
+    host = gethostbyname(hostname);
+    if (host == NULL) {
+        fprintf(stderr, "Error: Could not resolve hostname.\n");
+        return false;
+        //exit(EXIT_FAILURE);
+    }
+
+    /* Create a UDP socket */
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Error opening socket");
+        return false;
+        //exit(EXIT_FAILURE);
+    }
+
+    //TODO: bind the socket?
+
+    /* Set up the receiver struct */
+    memset(&receiver_address, 0, sizeof(receiver_address));
+    receiver_address.sin_family = AF_INET;
+    receiver_address.sin_port = htons(hostUDPport);
+    memcpy(&receiver_address.sin_addr, host->h_addr, host->h_length);
+
+    /* Connect other end of socket to the Receiver */ 
+    if (connect(sockfd, (struct sockaddr *)&receiver_address, sizeof(receiver_address)) < 0) {
+        perror("Error connecting to server");
+        close(sockfd);
+        return false;
+        // exit(EXIT_FAILURE);
+    }
+
+    //printf("UDP socket connected to %s:%s\n", HOSTNAME, PORT);
+
+    /* Set the socket to non-blocking mode for receiving */
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("Error getting socket flags");
+        return false;
+        //close(sockfd);
+        //exit(EXIT_FAILURE);
+    }
+    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("Error setting socket to non-blocking mode");
+        return false;
+        //close(sockfd);
+        //exit(EXIT_FAILURE);
+    }
+
+
+    return true;
+
+
+}
 
 
 
@@ -130,55 +236,74 @@ _local bool open_file(char* filename, unsigned long long int bytesToTransfer)
 /* Connection Setup */
 _local void sender_action_Start_Connection(void)
 {
+    /* send SYNC = 1 to receiver */ 
+    struct protocol_Header sync_header;
 
-    // send SYNC = 1 to dest
+    /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
+    sync_header.management_byte = 0;
+    sync_header.seq_ack_num = 0;
+    sync_header.management_byte = management_byte | 0x80;
+
+    ssize_t bytes_sent = send(sockfd, &sync_header, sizeof(sync_header), 0);
+
+    if (bytes_sent < 0) {
+        perror("Error sending data");
+        //TODO: handle
+    }
     
-    // start timer
-        // what should timer be? 2 seconds
-
-
+    /* Start 2 second timer */
     start = clock();
-    // wait for 2 seconds
     while(1)
     {
         end = clock();
         cpu_time_used_in_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
-        
-        // check socket for SYNC ACK = 1 
-        if (SYNC_ACK = 1 received)
+
+        /* Check Socket for response */
+        struct protocol_Header receive_buffer;
+        ssize_t bytes_received = recv(sockfd, &receive_buffer, 512, MSG_DONTWAIT);
+        if (bytes_received > 0) 
         {
-            // set current window size using cwnd stuff
-            sender_current_state = Send_N_Packets;
-            break;
+            /* If its a Sync Ack*/
+            if ((receive_buffer.management_byte & 0x40) == 0x40) {
+                //TODO: set up sliding window, current packet size, RTT?
+                sender_current_state = Send_N_Packets;
+                break;
+            }
+        } 
+        else if (bytes_received == 0) 
+        {
+            printf("Connection closed by peer\n");
+            //TODO: handle
+            //break;
+        } 
+        /* Check if the error is due to the socket being non-blocking */
+        else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
+        {
+            perror("Error receiving data");
+            //close(sockfd);
+            //exit(EXIT_FAILURE);
+            // TODO: handle
         }
 
-        // if (timer end), go to Start Connection State.
+        /* Check Timer for timeout */
         else if (cpu_time_used_in_seconds >= 2)
         {
             break;
         }
-
-        else if (SYNC_ACK = 1 received)
-        {
-            // TODO: set current window size using cwnd stuff
-            sender_current_state = Send_N_Packets;
-            break;
-        }
     }
-    return;
+    return;    
 }
-
-
-
-
 
 
 /* Send Data*/
 _local void sender_action_Send_N_Packets(void) 
 {
     //TODO: fix sliding window
-    // send first packet in cwnd
-        // 
+    /* Send first packet in cwnd */
+    struct protocol_Packet packet_being_sent;
+    packet_being_sent.
+
+
     // start timer
     start = clock();
 
@@ -215,6 +340,9 @@ _local void sender_action_Wait_for_Ack(void)
 }
 
 
+
+
+
 void rsend(char* hostname, 
             unsigned short int hostUDPport, 
             char* filename, 
@@ -222,6 +350,7 @@ void rsend(char* hostname,
 {
     if (!sender_init())
     {   
+        sender_finish();
         return error;
     }
 
