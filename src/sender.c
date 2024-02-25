@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
+#include "our_protocol.h"
      
 
 
@@ -31,26 +32,6 @@ _local static clock_t start, end;
 _local static double cpu_time_used_in_seconds;
 _local static double cpu_time_used_in_ms;
      
-
-struct protocol_Header
-{
-
-
-
-
-
-}
-
-
-struct protocol_Packet
-{
-
-    
-
-
-
-}
-
 
 enum sender_state
 {
