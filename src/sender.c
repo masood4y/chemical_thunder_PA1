@@ -248,14 +248,14 @@ _local bool setup_socket(char* hostname, unsigned short int hostUDPport) {
 _local void sender_action_Start_Connection(void)
 {
     /* send SYNC = 1 to receiver */ 
-    struct protocol_Header sync_header;
+    struct protocol_Packet sync_packet;
 
     /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
-    sync_header.management_byte = 0;
-    sync_header.seq_ack_num = 0;
-    sync_header.management_byte = management_byte | 0x80;
+    sync_packet.header.management_byte = 0;
+    sync_packet.header.seq_ack_num = 0;
+    sync_packet.header.management_byte = management_byte | 0x80;
 
-    ssize_t bytes_sent = send(sockfd, &sync_header, sizeof(sync_header), 0);
+    ssize_t bytes_sent = send(sockfd, &sync_packet, sizeof(protocol_Packet), 0);
 
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -322,14 +322,14 @@ _local void sender_action_Send_N_Packets(void)
             packet_being_sent.header.management_byte = 0;
             for (i = 0; i < 1450, sending_index <= in_Flight[1]; i++)
             {
-                protocol_Packet.data[i] = fgetc(file_pointer);
+                packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
             }
             packet_being_sent.header.management_byte = 0;
             packet_being_sent.header.seq_ack_num = sending_index - 1;
             if (i != 1450) {
                 for (int j = i; j < 1450; j++){
-                    protocol_Packet.data[j] = EOF;
+                    packet_being_sent.data[j] = EOF;
                 }
             }
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(protocol_Packet), 0);
@@ -357,7 +357,7 @@ _local void sender_action_Send_N_Packets(void)
             packet_being_sent.header.seq_ack_num = sending_index - 1;
             if (i != 1450) {
                 for (int j = i; j < 1450; j++){
-                    protocol_Packet.data[j] = EOF;
+                    packet_being_sent.data[j] = EOF;
                 }
             }
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(protocol_Packet), 0);
@@ -388,7 +388,7 @@ _local void sender_action_Wait_for_Ack(void)
 
         /* Check Socket for response */
         struct protocol_Header receive_buffer;
-        ssize_t bytes_received = recv(sockfd, &receive_buffer, 512, MSG_DONTWAIT);
+        ssize_t bytes_received = recv(sockfd, &receive_buffer, sizeof(protocol_Header), MSG_DONTWAIT);
         if (bytes_received > 0) 
         {
             /* If its a Valid Seq number */
@@ -491,14 +491,14 @@ _local bool valid_ack_num(uint16_t ack_num)
 _local void sender_action_Send_Fin(void)
 {
     /* send FIN = 1 to receiver */ 
-    struct protocol_Header sync_header;
+    struct protocol_Packet fin_packet;
 
     /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
-    sync_header.management_byte = 0;
-    sync_header.seq_ack_num = 0;
-    sync_header.management_byte = management_byte | 0x02;
+    fin_packet.header.management_byte = 0;
+    fin_packet.header.seq_ack_num = 0;
+    fin_packet.header.management_byte = management_byte | 0x02;
 
-    ssize_t bytes_sent = send(sockfd, &sync_header, sizeof(sync_header), 0);
+    ssize_t bytes_sent = send(sockfd, &fin_packet, sizeof(protocol_Packet), 0);
 
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -524,7 +524,7 @@ _local void sender_action_Wait_Fin_Ack(void)
 
         /* Check Socket for response */
         struct protocol_Header receive_buffer;
-        ssize_t bytes_received = recv(sockfd, &receive_buffer, 512, MSG_DONTWAIT);
+        ssize_t bytes_received = recv(sockfd, &receive_buffer, sizeof(protocol_Header), MSG_DONTWAIT);
         if (bytes_received > 0) 
         {
             /* If its a Fin Ack*/
