@@ -52,7 +52,7 @@ static double timeoutInterval_in_ms;
 static double devRTT;
 
 
-const static uint16_t max_window_size = 21750; /* Set as (uint16_t / 3) */ 
+static const uint16_t max_window_size = 21750; /* Set as (uint16_t / 3) */ 
 
 static clock_t start, end;
 static double cpu_time_used_in_seconds;
@@ -122,7 +122,6 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
     if (bytes_left_to_send < current_window_size){
             current_window_size = bytes_left_to_send;
     }
-    acknowledged[2];
     in_Flight[0] = 0;
     in_Flight[1] = in_Flight[0] + current_window_size;
     acknowledged[0] = in_Flight[1] + 1;
@@ -199,7 +198,7 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     
     /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
     if (file_size < bytesToTransfer) {
-        bytes_left_to_send = file_size;
+        bytes_left_to_send = (unsigned long long int)file_size;
     }
     else {
         bytes_left_to_send = bytesToTransfer;
@@ -232,7 +231,8 @@ int setup_socket(char* hostname, unsigned short int hostUDPport) {
     memset(&receiver_address, 0, sizeof(receiver_address));
     receiver_address.sin_family = AF_INET;
     receiver_address.sin_port = htons(hostUDPport);
-    memcpy(&receiver_address.sin_addr, host->h_addr, host->h_length);
+    memcpy(&receiver_address.sin_addr, host->h_addr_list[0], host->h_length);
+    //memcpy(&receiver_address.sin_addr, host->h_addr, host->h_length);
 
     /* Connect other end of socket to the Receiver */ 
     if (connect(sockfd, (struct sockaddr *)&receiver_address, sizeof(receiver_address)) < 0) {
@@ -268,7 +268,7 @@ void updateRTT(double sampleRTT) {
     RTT_in_ms = (1- ALPHA) * RTT_in_ms + ALPHA * sampleRTT;
     
     // Update "safety margin" for timeout intervals.
-    devRTT = (1 - BETA) * devRTT + BETA * abs(sampleRTT - RTT_in_ms);
+    devRTT = (1 - BETA) * devRTT + BETA * fabs(sampleRTT - RTT_in_ms);
 
     // Update timeout interval using this newly estimated RTT and safety margin.
     timeoutInterval_in_ms = RTT_in_ms + 4 * devRTT;
@@ -354,7 +354,7 @@ void sender_action_Send_N_Packets(void)
         {
             int i;
             packet_being_sent.header.management_byte = 0;
-            for (i = 0; i < 1450, sending_index <= in_Flight[1]; i++)
+            for (i = 0; (i < 1450) && (sending_index <= in_Flight[1]); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
@@ -369,6 +369,9 @@ void sender_action_Send_N_Packets(void)
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
             
             // TODO: error checking on send
+            if (bytes_sent == -1){
+                // handle
+            }
             if (first_packet)
             {
                 start = clock();
@@ -382,7 +385,7 @@ void sender_action_Send_N_Packets(void)
         {
             int i;
             packet_being_sent.header.management_byte = 0;
-            for (i = 0; i < 1450, (sending_index <= in_Flight[1] || sending_index >= in_Flight[0]); i++)
+            for (i = 0; (i < 1450 && (sending_index <= in_Flight[1] || sending_index >= in_Flight[0])); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
@@ -396,6 +399,9 @@ void sender_action_Send_N_Packets(void)
             }
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
             // TODO: error checking on send
+            if (bytes_sent == -1){
+                // handle
+            }
             if (first_packet)
             {
                 start = clock();
@@ -479,7 +485,7 @@ void sender_action_Wait_for_Ack(void)
                 //acknowledged[0];
                 // go to Send N Packets
             current_window_size = current_window_size/2;
-            current_window_size + 1450 - (current_window_size % 1450);
+            current_window_size = current_window_size + 1450 - (current_window_size % 1450);
             in_Flight[1] = in_Flight[0] + current_window_size;
             acknowledged[0] = in_Flight[1] + 1;
             fseek(file_pointer, file_offset_for_sending, SEEK_SET);
@@ -523,7 +529,7 @@ int valid_ack_num(uint16_t ack_num)
         }
         return 0;
     }
-
+    return 0;
 }
 
 
