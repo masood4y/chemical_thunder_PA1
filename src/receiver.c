@@ -12,7 +12,6 @@
 #include <errno.h>
 
 #include "our_protocol.h"
-#include <stdbool.h>
 #include <fcntl.h>
 
 #define LONG_TIMER_MS 500 // 0.5s
@@ -46,15 +45,15 @@ enum receiver_state
 
 /* ================ Function Declarations Start ================ */
 /* Initialization */
-bool receiver_init(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate);
+int receiver_init(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate);
 
 /* Closing file, socket, etc. */
 void receiver_finish(void);
 
 /* Checking packets */
-bool is_SYNC(const char* packet);
-bool is_data(const char* packet);
-bool is_FIN(const char* packet);
+int is_SYNC(const char* packet);
+int is_data(const char* packet);
+int is_FIN(const char* packet);
 
 /* Connection Setup */
 void receiver_action_Wait_Connection(void);
@@ -106,20 +105,20 @@ void rrecv(unsigned short int myUDPport,
 }
 
 // FIXME: IF errors occur, should destroy/close everything.
-bool receiver_init(unsigned short int myUDPport, 
+int receiver_init(unsigned short int myUDPport, 
             char* destinationFile, 
             unsigned long long int writeRate) {
     // Create the UDP socket.
     receiver_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (receiver_socket < 0) {
         perror("Error with creating socket.");
-        return false;
+        return 0;
     }
     
     // Set the socket as non-blocking.
     if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETLK, 0) | O_NONBLOCK)) {
         perror("Error with setting socket flags.");
-        return false;
+        return 0;
     }
 
     // Set socket address for receiving.
@@ -131,7 +130,7 @@ bool receiver_init(unsigned short int myUDPport,
     // Bind the socket to the address and port.
     if (bind(receiver_socket, (struct sockaddr *)receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
         perror("Error binding to the port.");
-        return false;
+        return 0;
     }
 
     // Open file for writing.
@@ -140,7 +139,7 @@ bool receiver_init(unsigned short int myUDPport,
 
     if (filePointer == NULL) {
         perror("Error opening file.");
-        return false;
+        return 0;
     }
 
     // Set static variables.
@@ -152,7 +151,7 @@ bool receiver_init(unsigned short int myUDPport,
     buffered_packets = NULL;
     next_needed_packet_num = 0;
 
-    return true;
+    return 1;
 }
 
 // TODO
@@ -161,20 +160,20 @@ void receiver_finish(void) {
 }
 
 // Checks if incoming packet is valid SYNC packet.
-bool is_SYNC(const char* packet) {
+int is_SYNC(const char* packet) {
     struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     uint8_t SYNC_bit = header.management_byte & 0x80; // SYNC is upper-most bit.
     return SYNC_bit == 1;
 }
 
 // Checks if incoming packet is data packet (management byte is required to be zero for data).
-bool is_data(const char* packet) {
+int is_data(const char* packet) {
     struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     return header.management_byte == 0;
 }
 
 // Checks if incoming packet is valid FIN packet.
-bool is_FIN(const char* packet) {
+int is_FIN(const char* packet) {
     struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     uint8_t FIN_bit = header.management_byte & 0x1; // FIN is second lower-most bit.
     return FIN_bit == 1;
