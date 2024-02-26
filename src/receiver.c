@@ -230,10 +230,10 @@ void receiver_action_Wait_for_Packet(void) {
             uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
             if ((sequence_num >= next_needed_packet_num) && (sequence_num < (next_needed_packet_num + MAX_PACKETS_IN_WINDOW))) {
                 // Duplicate or invalid, send cumulative ACK right away.
-                struct protocol_Packet ACK_packet;
+                struct protocol_Header ACK_packet;
                 memset(&ACK_packet, 0, sizeof(ACK_packet));
 
-                ACK_packet.header.seq_ack_num = next_needed_packet_num;
+                ACK_packet.seq_ack_num = next_needed_packet_num;
                 // Everything else should already be zero'd...
                 
                 if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
@@ -309,10 +309,10 @@ void receiver_action_Wait_for_Pipeline(void) {
         buffered_packets = NULL;
 
         // Send Cumulative ACK
-        struct protocol_Packet ACK_packet;
+        struct protocol_Header ACK_packet;
         memset(&ACK_packet, 0, sizeof(ACK_packet));
 
-        ACK_packet.header.seq_ack_num = next_needed_packet_num;
+        ACK_packet.seq_ack_num = next_needed_packet_num;
         // Everything else should already be zero'd...
         
         if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
