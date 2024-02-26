@@ -16,7 +16,7 @@
 
 #define LONG_TIMER_MS 500 // 0.5s
 #define SHORT_TIMER_MS 100
-#define BUFFER_SIZE 1024 // FIXME: this is arbitrary for now...
+#define BUFFER_SIZE 1455 // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
 static unsigned int receiver_current_state;
@@ -173,7 +173,7 @@ void receiver_finish(void) {
 int is_SYNC(const char* packet) {
     struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
     uint8_t SYNC_bit = header.management_byte & 0x80; // SYNC is upper-most bit.
-    return SYNC_bit == 1;
+    return SYNC_bit == 0x80;
 }
 
 // Checks if incoming packet is data packet (management byte is required to be zero for data).
@@ -185,8 +185,8 @@ int is_data(const char* packet) {
 // Checks if incoming packet is valid FIN packet.
 int is_FIN(const char* packet) {
     struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
-    uint8_t FIN_bit = header.management_byte & 0x1; // FIN is second lower-most bit.
-    return FIN_bit == 1;
+    uint8_t FIN_bit = header.management_byte & 0x2; // FIN is second lower-most bit.
+    return FIN_bit == 0x2;
 }
 
 void receiver_action_Wait_Connection(void) {
