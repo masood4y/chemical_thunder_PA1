@@ -116,19 +116,20 @@ int receiver_init(unsigned short int myUDPport,
     }
     
     // Set the socket as non-blocking.
-    if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETLK, 0) | O_NONBLOCK)) {
+    if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETFL, 0) | O_NONBLOCK)) {
         perror("Error with setting socket flags.");
         return 0;
     }
 
     // Set socket address for receiving.
-    struct sockaddr_in *receiver_socket_addr;
-    receiver_socket_addr->sin_family = AF_INET;
-    receiver_socket_addr->sin_port = htons(myUDPport);
-    receiver_socket_addr->sin_addr.s_addr = htonl(INADDR_ANY); // no-specific IP-address
+    struct sockaddr_in receiver_socket_addr;
+    memset(&receiver_socket_addr, 0, sizeof(struct sockaddr_in));
+    receiver_socket_addr.sin_family = AF_INET;
+    receiver_socket_addr.sin_port = htons(myUDPport);
+    receiver_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY); // no-specific IP-address
 
     // Bind the socket to the address and port.
-    if (bind(receiver_socket, (struct sockaddr *)receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
+    if (bind(receiver_socket, (struct sockaddr *)&receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
         perror("Error binding to the port.");
         return 0;
     }
