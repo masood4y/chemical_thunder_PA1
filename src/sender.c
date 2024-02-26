@@ -89,8 +89,16 @@ _local bool sender_init(char* filename, unsigned long long int bytesToTransfer,
         return false;
     }
 
-    
-    
+    current_window_size = 1450;
+    if (bytes_left_to_send < current_window_size){
+            current_window_size = bytes_left_to_send;
+    }
+    acknowledged[2];
+    in_Flight[0] = 0;
+    in_Flight[1] = in_Flight[0] + current_window_size;
+    acknowledged[0] = in_Flight[1] + 1;
+    acknowledged[1] = in_Flight[0] - 1;
+
     // // Main loop for bidirectional communication
     // while (1) {
     //     // Receive data (non-blocking)
@@ -402,9 +410,15 @@ _local void sender_action_Wait_for_Ack(void)
                 fseek(file_pointer, file_offset_for_sending, SEEK_SET);
                 
                 //TODO: update current window size based on bytes left, AMID, theoretical max
-                //in_Flight[1];
-                //acknowledged[0];
-                // go to Send N Packets
+                if (current_window_size < max_window_size) {
+                    current_window_size = current_window_size + 1450;
+                }
+                if (bytes_left_to_send < current_window_size){
+                    current_window_size = bytes_left_to_send;
+                }
+                bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+                in_Flight[1] = in_Flight[0] + current_window_size;
+                acknowledged[0] = in_Flight[1] + 1;
                 sender_current_state = Send_N_Packets;
                 break;
             }
@@ -429,6 +443,10 @@ _local void sender_action_Wait_for_Ack(void)
                 //in_Flight[1];
                 //acknowledged[0];
                 // go to Send N Packets
+            current_window_size =/2;
+            current_window_size + 1450 - (current_window_size % 1450);
+            in_Flight[1] = in_Flight[0] + current_window_size;
+            acknowledged[0] = in_Flight[1] + 1;
             fseek(file_pointer, file_offset_for_sending, SEEK_SET);
             sender_current_state = Send_N_Packets;
             break;
