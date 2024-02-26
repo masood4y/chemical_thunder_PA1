@@ -27,11 +27,12 @@ extern volatile static uint16_t current_window_size;
 extern volatile static double RTT_in_ms;
 
 
-_local const static uint16_t max_window_size = 21845; /* Set as (uint16_t / 3) */ 
+_local const static uint16_t max_window_size = 21750; /* Set as (uint16_t / 3) */ 
 
 _local static clock_t start, end;
 _local static double cpu_time_used_in_seconds;
 _local static double cpu_time_used_in_ms;
+static long long int file_offset_for_sending;
      
 
 enum sender_state
@@ -45,7 +46,8 @@ enum sender_state
 
     /* Connection Teardown */
     Send_Fin,
-    Wait_Fin_Ack
+    Wait_Fin_Ack,
+    sender_Done
 };
 
 
@@ -87,8 +89,16 @@ _local bool sender_init(char* filename, unsigned long long int bytesToTransfer,
         return false;
     }
 
-    
-    
+    current_window_size = 1450;
+    if (bytes_left_to_send < current_window_size){
+            current_window_size = bytes_left_to_send;
+    }
+    acknowledged[2];
+    in_Flight[0] = 0;
+    in_Flight[1] = in_Flight[0] + current_window_size;
+    acknowledged[0] = in_Flight[1] + 1;
+    acknowledged[1] = in_Flight[0] - 1;
+
     // // Main loop for bidirectional communication
     // while (1) {
     //     // Receive data (non-blocking)
@@ -156,6 +166,7 @@ _local bool open_file(char* filename, unsigned long long int bytesToTransfer)
     fseek(file_pointer, 0, SEEK_END);
     file_size = ftell(file_pointer);
     fseek(file_pointer, 0, SEEK_SET);
+    file_offset_for_sending = 0;
     
     /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
     if (file_size < bytesToTransfer) {
@@ -237,14 +248,14 @@ _local bool setup_socket(char* hostname, unsigned short int hostUDPport) {
 _local void sender_action_Start_Connection(void)
 {
     /* send SYNC = 1 to receiver */ 
-    struct protocol_Header sync_header;
+    struct protocol_Packet sync_packet;
 
     /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
-    sync_header.management_byte = 0;
-    sync_header.seq_ack_num = 0;
-    sync_header.management_byte = management_byte | 0x80;
+    sync_packet.header.management_byte = 0;
+    sync_packet.header.seq_ack_num = 0;
+    sync_packet.header.management_byte = management_byte | 0x80;
 
-    ssize_t bytes_sent = send(sockfd, &sync_header, sizeof(sync_header), 0);
+    ssize_t bytes_sent = send(sockfd, &sync_packet, sizeof(protocol_Packet), 0);
 
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -298,49 +309,255 @@ _local void sender_action_Start_Connection(void)
 /* Send Data*/
 _local void sender_action_Send_N_Packets(void) 
 {
-    //TODO: fix sliding window
-    /* Send first packet in cwnd */
+    uint16_t sending_index;
     struct protocol_Packet packet_being_sent;
-    packet_being_sent.
-
-
-    // start timer
-    start = clock();
-
-    // send rest of the packets in cwnd
-
+    sending_index = in_Flight[0];
+    bool first_packet = true;
+    
+    if (in_Flight[1] > in_Flight[0])
+    {
+        while(sending_index <= in_Flight[1])
+        {
+            int i;
+            packet_being_sent.header.management_byte = 0;
+            for (i = 0; i < 1450, sending_index <= in_Flight[1]; i++)
+            {
+                packet_being_sent.data[i] = fgetc(file_pointer);
+                sending_index++; 
+            }
+            packet_being_sent.header.management_byte = 0;
+            packet_being_sent.header.seq_ack_num = sending_index - 1;
+            if (i != 1450) {
+                for (int j = i; j < 1450; j++){
+                    packet_being_sent.data[j] = EOF;
+                }
+            }
+            ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(protocol_Packet), 0);
+            
+            // TODO: error checking on send
+            if (first_packet)
+            {
+                start = clock();
+                first_packet = false;
+            }
+        }
+    }
+    else if (in_Flight[0] > in_Flight[1])
+    {
+        while(sending_index <= in_Flight[1] || sending_index >= in_Flight[0])
+        {
+            int i;
+            packet_being_sent.header.management_byte = 0;
+            for (i = 0; i < 1450, (sending_index <= in_Flight[1] || sending_index >= in_Flight[0]); i++)
+            {
+                protocol_Packet.data[i] = fgetc(file_pointer);
+                sending_index++; 
+            }
+            packet_being_sent.header.management_byte = 0;
+            packet_being_sent.header.seq_ack_num = sending_index - 1;
+            if (i != 1450) {
+                for (int j = i; j < 1450; j++){
+                    packet_being_sent.data[j] = EOF;
+                }
+            }
+            ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(protocol_Packet), 0);
+            // TODO: error checking on send
+            if (first_packet)
+            {
+                start = clock();
+                first_packet = false;
+            }
+        }
+    }
     sender_current_state = Wait_for_Ack;
-
     return;
 }
+
 _local void sender_action_Wait_for_Ack(void)
 {
-
-    while(1){
-        end = clock();
-        cpu_time_used_in_ms = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000 );
-        // check port for Packet
-
-        if (ACK_Valid_received) {
-            // update bytes left
-            // if bytes left == 0, goto: Send_FIN
-            // adjust sliding window, update current window size
-            // goto: Send N Packets
-        }
-
-        else if 
-
-
-
+    if (bytes_left_to_send == 0) {
+        sender_current_state = Send_Fin;
+        return;
     }
 
+    while(1)
+    {
+        end = clock();
+        cpu_time_used_in_ms = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000 );
+        
 
+        /* Check Socket for response */
+        struct protocol_Header receive_buffer;
+        ssize_t bytes_received = recv(sockfd, &receive_buffer, sizeof(protocol_Header), MSG_DONTWAIT);
+        if (bytes_received > 0) 
+        {
+            /* If its a Valid Seq number */
+            uint16_t ack_num = receive_buffer.seq_ack_num;
+            if (valid_ack_num(ack_num)) 
+            {
+                uint16_t old_acked = acknowledged[1];
+                acknowledged[1] = ack_num - 1;
+                bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+                in_Flight[0] = ack_mum;
+                if (bytes_left_to_send == 0){
+                    sender_current_state = Send_Fin;
+                    break;
+                }
+                // update bytes left, if bytes left to send == 0, goto Send_FIN
+
+                // update file offset for sending
+                file_offset_for_sending =+ (acknowledged[1] - old_acked);
+                fseek(file_pointer, file_offset_for_sending, SEEK_SET);
+                
+                //TODO: update current window size based on bytes left, AMID, theoretical max
+                if (current_window_size < max_window_size) {
+                    current_window_size = current_window_size + 1450;
+                }
+                if (bytes_left_to_send < current_window_size){
+                    current_window_size = bytes_left_to_send;
+                }
+                bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+                in_Flight[1] = in_Flight[0] + current_window_size;
+                acknowledged[0] = in_Flight[1] + 1;
+                sender_current_state = Send_N_Packets;
+                break;
+            }
+        } 
+        else if (bytes_received == 0) 
+        {
+            printf("Connection closed by peer\n");
+            //TODO: handle
+            //break;
+        } 
+        /* Check if the error is due to the socket being non-blocking */
+        else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
+        {
+            perror("Error receiving data");
+            //close(sockfd);
+            //exit(EXIT_FAILURE);
+            // TODO: handle
+        }
+        else if(cpu_time_used_in_ms > 2000) //TODO: figure out time to use
+        {
+            //TODO: update current window size based on bytes left, AMID, theoretical max
+                //in_Flight[1];
+                //acknowledged[0];
+                // go to Send N Packets
+            current_window_size =/2;
+            current_window_size + 1450 - (current_window_size % 1450);
+            in_Flight[1] = in_Flight[0] + current_window_size;
+            acknowledged[0] = in_Flight[1] + 1;
+            fseek(file_pointer, file_offset_for_sending, SEEK_SET);
+            sender_current_state = Send_N_Packets;
+            break;
+        }
+
+        
+
+        // if its a valid ack
+            // update bytes left, if bytes left to send == 0, goto Send_FIN
+            // update file offset for sending
+            // update current window size based on bytes left, AMID, theoretical max
+            // go to Send N Packets
+        
+
+        //else if timeout
+            // update file offset for sending
+            // update current window size AMID, theoretical max
+            // go to Send N Packets
+    
+    }
     return;
+
+}
+
+_local bool valid_ack_num(uint16_t ack_num) 
+{
+
+    if (in_Flight[0] < in_Flight[1]){
+        return ((ack_num >= in_Flight[0]) && (ack_num <= (in_Flight[1] + 1)));
+    }
+
+    else if (in_Flight[0] > in_Flight[1])
+    {   
+        return (ack_num >= in_Flight[0]) || (ack_num <= (in_Flight[1] + 1));
+    }
 
 }
 
 
 
+/* Connection Teardown */
+_local void sender_action_Send_Fin(void)
+{
+    /* send FIN = 1 to receiver */ 
+    struct protocol_Packet fin_packet;
+
+    /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
+    fin_packet.header.management_byte = 0;
+    fin_packet.header.seq_ack_num = 0;
+    fin_packet.header.management_byte = management_byte | 0x02;
+
+    ssize_t bytes_sent = send(sockfd, &fin_packet, sizeof(protocol_Packet), 0);
+
+    if (bytes_sent < 0) {
+        perror("Error sending data");
+        //TODO: handle
+    }
+    start = clock();
+
+    sender_current_state = Wait_Fin_Ack;
+    return;
+}
+
+
+_local void sender_action_Wait_Fin_Ack(void)
+{
+    // Wait_FIN_Ack: do nothing/wait
+    //         if (timeout), goto: Send_FIN
+    //         else if (FIN_ACK = 1 received), done 
+    
+    while(1)
+    {
+        end = clock();
+        cpu_time_used_in_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+        /* Check Socket for response */
+        struct protocol_Header receive_buffer;
+        ssize_t bytes_received = recv(sockfd, &receive_buffer, sizeof(protocol_Header), MSG_DONTWAIT);
+        if (bytes_received > 0) 
+        {
+            /* If its a Fin Ack*/
+            if ((receive_buffer.management_byte & 0x2) == 0x2) {
+                //TODO: set up sliding window, current packet size, RTT?
+                sender_current_state = sender_Done;
+                break;
+            }
+        } 
+        else if (bytes_received == 0) 
+        {
+            printf("Connection closed by peer\n");
+            //TODO: handle
+            //break;
+        } 
+        /* Check if the error is due to the socket being non-blocking */
+        else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
+        {
+            perror("Error receiving data");
+            //close(sockfd);
+            //exit(EXIT_FAILURE);
+            // TODO: handle
+        }
+
+        /* Check Timer for timeout */ //TODO: fix timer
+        else if (cpu_time_used_in_seconds >= 2)
+        {
+            sender_current_state = Send_Fin;
+            break;
+        }
+    }
+    return;    
+}
 
 
 void rsend(char* hostname, 
@@ -354,7 +571,7 @@ void rsend(char* hostname,
         return error;
     }
 
-    while (1) 
+    while (sender_current_state != sender_Done) 
     {
         //TODO: figure out how to break from while(1) loop at the end
         switch (sender_current_state) 
