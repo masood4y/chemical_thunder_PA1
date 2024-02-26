@@ -627,3 +627,14 @@ int main(int argc, char** argv) {
 
     return (EXIT_SUCCESS);
 }
+
+updateRTT(double sampleRTT) {
+    // Update estimated RTT using new sample RTT value.
+    estimatedRTT = (1- alpha) * estimatedRTT + alpha * sampleRTT;
+    
+    // Update "safety margin" for timeout intervals.
+    devRTT = (1 - beta) * devRTT + beta * abs(sampleRTT - estimatedRTT);
+
+    // Update timeout interval using this newly estimated RTT and safety margin.
+    timeoutInterval = estimatedRTT + 4 * devRTT;
+}
