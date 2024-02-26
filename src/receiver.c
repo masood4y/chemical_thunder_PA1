@@ -198,10 +198,13 @@ void receiver_action_Wait_Connection(void) {
             }
 
             // Send SYNC_ACK back to sender to complete handshaking.
-            char SYNC_ACK_packet[] = "SYNC_ACK"; // FIXME!
-            size_t packet_size = sizeof(SYNC_ACK_packet);
+            struct protocol_Header SYNC_ACK_packet;
+            memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
+            
+            SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
+            // Everything else should already be zero'd...
 
-            if (send(receiver_socket, SYNC_ACK_packet, packet_size, 0) < 0) {
+            if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
                 perror("Error with sending SYNC_ACK.");
                 // FIXME: Handle this?
             }
@@ -291,7 +294,7 @@ void receiver_action_Wait_for_Pipeline(void) {
             struct protocol_Packet packet = buffered_packets[i];
 
             // Check if it's the next packet we need (otherwise we are missing one)
-            if (protocol_Packet.header.seq_ack_num != next_needed_packet_num) {
+            if (packet.header.seq_ack_num != next_needed_packet_num) {
                 break;
             }
 
@@ -324,10 +327,10 @@ void receiver_action_Wait_for_Pipeline(void) {
 // Send FIN_ACK back to sender.
 void receiver_action_Send_Fin_Ack(void) {
     // Construct FIN_ACK packet.
-    struct protocol_Packet FIN_ACK_packet;
+    struct protocol_Header FIN_ACK_packet;
     memset(&FIN_ACK_packet, 0, sizeof(FIN_ACK_packet));
 
-    FIN_ACK_packet.header.management_byte = 0x1; // FIN_ACK bit
+    FIN_ACK_packet.management_byte = 0x1; // FIN_ACK bit
     // Everything else should already be zero'd...
     
     if (send(receiver_socket, &FIN_ACK_packet, sizeof(FIN_ACK_packet), 0) < 0) {
