@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 #include "our_protocol.h"
      
 // #define PROTOCOL_DATA_SIZE 1450
@@ -197,7 +198,7 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     file_offset_for_sending = 0;
     
     /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
-    if (file_size < bytesToTransfer) {
+    if ((unsigned long long int)file_size < bytesToTransfer) {
         bytes_left_to_send = (unsigned long long int)file_size;
     }
     else {
