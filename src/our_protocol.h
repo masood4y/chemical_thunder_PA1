@@ -12,6 +12,9 @@
 #include <errno.h>
 #include <time.h>
 
+#define PROTOCOL_DATA_SIZE 1450
+#define MAX_WINDOW_SIZE 21845
+#define PACKET_SIZE 1450 // Just data.
 
 struct protocol_Header
 {
@@ -20,11 +23,10 @@ struct protocol_Header
 
     /* Servers as Seq num for sender, and Ack num for Receiver */
     uint16_t seq_ack_num;
-}
-
+};
 
 struct protocol_Packet
 {
     struct protocol_Header header;
-    char data[1450];
-}
+    char data[PROTOCOL_DATA_SIZE];
+};
