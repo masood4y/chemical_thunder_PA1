@@ -154,9 +154,18 @@ int receiver_init(unsigned short int myUDPport,
     return 1;
 }
 
-// TODO
+// FIXME: Potentially more?
 void receiver_finish(void) {
-    return;
+    // Close the file.
+    if (receiver_file != NULL) {
+        fclose(receiver_file);
+        receiver_file = NULL;
+    }
+
+    // Close the socket
+    if (receiver_socket >= 0) {
+        close(receiver_socket);
+    }
 }
 
 // Checks if incoming packet is valid SYNC packet.
