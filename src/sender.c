@@ -16,6 +16,9 @@
 
 
 // TODO: ensure all static variables are updated appropriately
+#define ALPHA 0.125
+#define BETA 0.25
+
 _local static unsigned int sender_current_state;
 _local static unsigned long long int bytes_left_to_send;
 _local static FILE *file_pointer;
@@ -23,8 +26,10 @@ _local static int sockfd;
 
 _local static uint16_t acknowledged[2];
 _local static uint16_t in_Flight[2];
-extern volatile static uint16_t current_window_size;
-extern volatile static double RTT_in_ms;
+static uint16_t current_window_size;
+static double RTT_in_ms;
+static double timeoutInterval_in_ms;
+static double devRTT;
 
 
 _local const static uint16_t max_window_size = 21750; /* Set as (uint16_t / 3) */ 
@@ -238,7 +243,16 @@ _local bool setup_socket(char* hostname, unsigned short int hostUDPport) {
 
 }
 
+void updateRTT(double sampleRTT) {
+    // Update estimated RTT using new sample RTT value.
+    RTT_in_ms = (1- ALPHA) * RTT_in_ms + alpha * sampleRTT
+    
+    // Update "safety margin" for timeout intervals.
+    devRTT = (1 - BETA) * devRTT + BETA * abs(sampleRTT - RTT_in_ms);
 
+    // Update timeout interval using this newly estimated RTT and safety margin.
+    timeoutInterval_in_ms = RTT_in_ms + 4 * devRTT
+}
 
 
 
@@ -267,16 +281,20 @@ _local void sender_action_Start_Connection(void)
     while(1)
     {
         end = clock();
-        cpu_time_used_in_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
+        //cpu_time_used_in_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
+        cpu_time_used_in_ms = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
 
         /* Check Socket for response */
         struct protocol_Header receive_buffer;
         ssize_t bytes_received = recv(sockfd, &receive_buffer, 512, MSG_DONTWAIT);
         if (bytes_received > 0) 
         {
-            /* If its a Sync Ack*/
+            /* If its a Sync Ack*/            
             if ((receive_buffer.management_byte & 0x40) == 0x40) {
                 //TODO: set up sliding window, current packet size, RTT?
+                RTT_in_ms = cpu_time_used_in_ms;
+                devRTT = RRT_in_ms/2;
+                timeoutInterval_in_ms = RTT_in_ms + 4 * devRTT
                 sender_current_state = Send_N_Packets;
                 break;
             }
@@ -297,7 +315,7 @@ _local void sender_action_Start_Connection(void)
         }
 
         /* Check Timer for timeout */
-        else if (cpu_time_used_in_seconds >= 2)
+        else if (cpu_time_used_in_ms >= 2000)
         {
             break;
         }
@@ -395,6 +413,7 @@ _local void sender_action_Wait_for_Ack(void)
             uint16_t ack_num = receive_buffer.seq_ack_num;
             if (valid_ack_num(ack_num)) 
             {
+                updateRTT(cpu_time_used_in_ms);
                 uint16_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
                 bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
@@ -437,7 +456,7 @@ _local void sender_action_Wait_for_Ack(void)
             //exit(EXIT_FAILURE);
             // TODO: handle
         }
-        else if(cpu_time_used_in_ms > 2000) //TODO: figure out time to use
+        else if(cpu_time_used_in_ms > timeoutInterval_in_ms) //TODO: figure out time to use
         {
             //TODO: update current window size based on bytes left, AMID, theoretical max
                 //in_Flight[1];
