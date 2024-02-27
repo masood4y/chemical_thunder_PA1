@@ -279,12 +279,12 @@ void receiver_action_Wait_for_Pipeline(void) {
     ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
 
     if (packet_size > 0 && is_data(buffer)) {
-        uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num / PACKET_SIZE;
+        uint16_t packet_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num / PACKET_SIZE;
         
         // Check if within window
         if ((sequence_num >= next_needed_packet_num) && (sequence_num < (next_needed_packet_num + MAX_PACKETS_IN_WINDOW))) {
             // If we already received this packet within the timer, it doesn't matter (data will be identical).
-            buffered_packets[sequence_num - next_needed_packet_num] = *(struct protocol_Packet *)buffer;
+            buffered_packets[packet_num - next_needed_packet_num] = *(struct protocol_Packet *)buffer;
         }
     } else if (packet_size < 0) {
         perror("Error with recv while waiting for pipeline.");
@@ -310,7 +310,8 @@ void receiver_action_Wait_for_Pipeline(void) {
             // Write data to output file
             fwrite(buffered_packets[i].data, 1, PROTOCOL_DATA_SIZE, receiver_file);
 
-            next_needed_packet_num++;
+            // Update the next needed packet number (accounting for overflow).
+            next_needed_packet_num = (packet.header.seq_ack_num + PACKET_SIZE) / PACKET_SIZE;
         }
 
         // Free the buffer for packets
