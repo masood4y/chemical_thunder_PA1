@@ -236,13 +236,13 @@ void receiver_action_Wait_for_Packet(void) {
         // Handle checking if valid seq packet, duplicate, finish, etc.
         if (is_data(buffer)) {
             // Check if valid sequence packet or is a duplicate.
-            uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
+            uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num / PACKET_SIZE;
             if ((sequence_num >= next_needed_packet_num) && (sequence_num < (next_needed_packet_num + MAX_PACKETS_IN_WINDOW))) {
                 // Duplicate or invalid, send cumulative ACK right away.
                 struct protocol_Header ACK_packet;
                 memset(&ACK_packet, 0, sizeof(ACK_packet));
 
-                ACK_packet.seq_ack_num = next_needed_packet_num;
+                ACK_packet.seq_ack_num = next_needed_packet_num * PACKET_SIZE;
                 // Everything else should already be zero'd...
                 
                 if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
@@ -279,7 +279,7 @@ void receiver_action_Wait_for_Pipeline(void) {
     ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
 
     if (packet_size > 0 && is_data(buffer)) {
-        uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
+        uint16_t sequence_num = ((struct protocol_Packet *)buffer)->header.seq_ack_num / PACKET_SIZE;
         
         // Check if within window
         if ((sequence_num >= next_needed_packet_num) && (sequence_num < (next_needed_packet_num + MAX_PACKETS_IN_WINDOW))) {
@@ -303,7 +303,7 @@ void receiver_action_Wait_for_Pipeline(void) {
             struct protocol_Packet packet = buffered_packets[i];
 
             // Check if it's the next packet we need (otherwise we are missing one)
-            if (packet.header.seq_ack_num != next_needed_packet_num) {
+            if ((packet.header.seq_ack_num / PACKET_SIZE) != next_needed_packet_num) {
                 break;
             }
 
@@ -321,7 +321,7 @@ void receiver_action_Wait_for_Pipeline(void) {
         struct protocol_Header ACK_packet;
         memset(&ACK_packet, 0, sizeof(ACK_packet));
 
-        ACK_packet.seq_ack_num = next_needed_packet_num;
+        ACK_packet.seq_ack_num = next_needed_packet_num * PACKET_SIZE;
         // Everything else should already be zero'd...
         
         if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
@@ -399,10 +399,25 @@ int compare_packets(const void *a, const void *b) {
     struct protocol_Packet *packet1 = (struct protocol_Packet *)a;
     struct protocol_Packet *packet2 = (struct protocol_Packet *)b;
 
-    if (packet1->header.seq_ack_num < packet2->header.seq_ack_num) {
-        return -1;
-    } else if (packet1->header.seq_ack_num > packet2->header.seq_ack_num) {
-        return 1;
+    packet1_num = packet1->header.seq_ack_num / PACKET_SIZE;
+    packet2_num = packet2->header.seq_ack_num / PACKET_SIZE;
+
+    // Sequence numbers may overflow and wrap-around.
+
+    if (packet1_num > packet2_num) {
+        if (packet1_num - packet2_num > MAX_PACKETS_IN_WINDOW) {
+            // Overflowed.
+            return -1;
+        } else {
+            return 1;
+        }
+    } else if (packet1_num < packet2_num) {
+        if (packet2_num - packet1_num > MAX_PACKETS_IN_WINDOW) {
+            // Overflowed.
+            return 1;
+        } else {
+            return -1;
+        }
     } else {
         return 0;
     }
