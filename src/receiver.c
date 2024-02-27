@@ -399,20 +399,19 @@ int compare_packets(const void *a, const void *b) {
     struct protocol_Packet *packet1 = (struct protocol_Packet *)a;
     struct protocol_Packet *packet2 = (struct protocol_Packet *)b;
 
-    packet1_num = packet1->header.seq_ack_num / PACKET_SIZE;
-    packet2_num = packet2->header.seq_ack_num / PACKET_SIZE;
+    uint16_t packet1_seq = packet1->header.seq_ack_num;
+    uint16_t packet2_seq = packet2->header.seq_ack_num;
 
     // Sequence numbers may overflow and wrap-around.
-
-    if (packet1_num > packet2_num) {
-        if (packet1_num - packet2_num > MAX_PACKETS_IN_WINDOW) {
+    if (packet1_seq > packet2_seq) {
+        if (packet1_seq - packet2_seq > MAX_PACKETS_IN_WINDOW) {
             // Overflowed.
             return -1;
         } else {
             return 1;
         }
-    } else if (packet1_num < packet2_num) {
-        if (packet2_num - packet1_num > MAX_PACKETS_IN_WINDOW) {
+    } else if (packet1_seq < packet2_seq) {
+        if (packet2_seq - packet1_seq > MAX_PACKETS_IN_WINDOW) {
             // Overflowed.
             return 1;
         } else {
