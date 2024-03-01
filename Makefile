@@ -12,7 +12,7 @@ rrecv: receiver.o
 sender.o: sender.c our_protocol.h
 	$(CC) $(CFLAGS) -c sender.c
 
-receiver.o: receiver_bytes.c our_protocol.h
+receiver.o: receiver.c our_protocol.h
 	$(CC) $(CFLAGS) -c receiver.c
 
 clean:
