@@ -153,7 +153,7 @@ int receiver_init(unsigned short int myUDPport,
     receiver_file = filePointer;
     receiver_write_rate = writeRate;
 
-    char *buffered_bytes = malloc(MAX_WINDOW_SIZE);
+    buffered_bytes = malloc(MAX_WINDOW_SIZE);
     if (buffered_bytes == NULL) 
     {
         perror("Failed to malloc for buffered bytes.");
@@ -322,7 +322,7 @@ void receiver_action_Wait_for_Packet(void) {
                  // buffered_bytes_index = seqnum_byte - next_anticipated_byte
                 for(int i = 0; i < PROTOCOL_DATA_SIZE; i++) {
                     buffer_index = local_seq_num - next_needed_seq_num;
-                    buffered_bytes[buffer_index] = ((struct protocol_Packet *)&buffer)->data[i];
+                    buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
                     local_seq_num++;
                 }              
 
