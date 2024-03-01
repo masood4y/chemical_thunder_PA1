@@ -13,7 +13,7 @@
 #include <time.h>
 
 #define PROTOCOL_DATA_SIZE 1450
-#define MAX_WINDOW_SIZE 21845
+#define MAX_WINDOW_SIZE 21750
 #define PACKET_SIZE 1450 // Just data.
 
 struct protocol_Header

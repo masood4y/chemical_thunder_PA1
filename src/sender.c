@@ -16,25 +16,7 @@
 #include <time.h>
 #include <math.h>
 #include "our_protocol.h"
-     
-// #define PROTOCOL_DATA_SIZE 1450
-// #define MAX_WINDOW_SIZE 21845
-// #define PACKET_SIZE 1450 // Just data.
 
-// struct protocol_Header
-// {
-//     /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
-//     uint8_t management_byte;
-
-//     /* Servers as Seq num for sender, and Ack num for Receiver */
-//     uint16_t seq_ack_num;
-// };
-
-// struct protocol_Packet
-// {
-//     struct protocol_Header header;
-//     char data[PROTOCOL_DATA_SIZE];
-// };
 
 // TODO: ensure all static variables are updated appropriately
 #define ALPHA 0.125
@@ -108,7 +90,8 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
     sockfd = -1;
     /* File related initialization */
     if (open_file(filename, bytesToTransfer))
-    {
+    {   
+        printf("Could not open file\n");
         return -1;
     }
 
@@ -116,6 +99,7 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
     /* Socket Set up for Listening and Sending to hostname */
     if (setup_socket(hostname, hostUDPport))
     {
+        printf("Could not setup_socket\n");
         return -1;
     }
 
@@ -127,53 +111,6 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
     in_Flight[1] = in_Flight[0] + current_window_size;
     acknowledged[0] = in_Flight[1] + 1;
     acknowledged[1] = in_Flight[0] - 1;
-
-    // // Main loop for bidirectional communication
-    // while (1) {
-    //     // Receive data (non-blocking)
-    //     ssize_t bytes_received = recv(sockfd, buffer, MAX_BUFFER_SIZE, MSG_DONTWAIT);
-    //     if (bytes_received > 0) {
-    //         printf("Received %zd bytes\n", bytes_received);
-    //         printf("Message received: %s\n", buffer);
-    //     } else if (bytes_received == 0) {
-    //         printf("Connection closed by peer\n");
-    //         break;
-    //     } else if (bytes_received == -1) {
-    //         // Check if the error is due to the socket being non-blocking
-    //         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-    //             perror("Error receiving data");
-    //             close(sockfd);
-    //             exit(EXIT_FAILURE);
-    //         }
-    //     }
-
-    //     // Send data
-    //     const char *message = "Hello, UDP server!";
-    //     int message_len = strlen(message);
-    //     ssize_t bytes_sent = send(sockfd, message, message_len, 0);
-    //     if (bytes_sent < 0) {
-    //         perror("Error sending data");
-    //         close(sockfd);
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     printf("Sent %zd bytes\n", bytes_sent);
-
-    //     // Sleep for a short interval to prevent busy-waiting
-    //     usleep(100000); // 100 ms
-    // }
-
-    // // Close the socket (not reached in this example)
-    // close(sockfd);
-
-
-
-    //TODO: set up sliding window
-        // acknowledged[];
-        // acknowledged[2];
-        // in_Flight[2];
-   
-
 
 
     /* Set up State machine */
@@ -355,20 +292,20 @@ void sender_action_Send_N_Packets(void)
         {
             int i;
             packet_being_sent.header.management_byte = 0;
-            for (i = 0; (i < 1450) && (sending_index <= in_Flight[1]); i++)
+            packet_being_sent.header.seq_ack_num = sending_index;
+            for (i = 0; (i < PROTOCOL_DATA_SIZE) && (sending_index <= in_Flight[1]); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
             }
-            packet_being_sent.header.management_byte = 0;
-            packet_being_sent.header.seq_ack_num = sending_index - 1;
-            if (i != 1450) {
-                for (int j = i; j < 1450; j++){
+            if (i <= 1450) {
+                for (int j = i; j < PROTOCOL_DATA_SIZE; j++){
                     packet_being_sent.data[j] = EOF;
                 }
             }
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
-            
+            printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
+
             // TODO: error checking on send
             if (bytes_sent == -1){
                 // handle
@@ -382,23 +319,23 @@ void sender_action_Send_N_Packets(void)
     }
     else if (in_Flight[0] > in_Flight[1])
     {
-        while(sending_index <= in_Flight[1] || sending_index >= in_Flight[0])
+        while ((sending_index <= in_Flight[1]) || (sending_index >= in_Flight[0]))
         {
             int i;
             packet_being_sent.header.management_byte = 0;
-            for (i = 0; (i < 1450 && (sending_index <= in_Flight[1] || sending_index >= in_Flight[0])); i++)
+            packet_being_sent.header.seq_ack_num = sending_index;
+            for (i = 0; (i < 1450 && ((sending_index <= in_Flight[1]) || (sending_index >= in_Flight[0]))); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
             }
-            packet_being_sent.header.management_byte = 0;
-            packet_being_sent.header.seq_ack_num = sending_index - 1;
-            if (i != 1450) {
+            if (i <= 1450) {
                 for (int j = i; j < 1450; j++){
                     packet_being_sent.data[j] = EOF;
                 }
             }
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
+            printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
             // TODO: error checking on send
             if (bytes_sent == -1){
                 // handle
@@ -436,16 +373,20 @@ void sender_action_Wait_for_Ack(void)
             uint16_t ack_num = receive_buffer.seq_ack_num;
             if (valid_ack_num(ack_num)) 
             {
+                printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
                 uint16_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
+                
+                // update bytes left, if bytes left to send == 0, goto Send_FIN
                 bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+                printf("%lld bytes left to send now\n", bytes_left_to_send);
                 in_Flight[0] = ack_num;
                 if (bytes_left_to_send == 0){
                     sender_current_state = Send_Fin;
                     break;
                 }
-                // update bytes left, if bytes left to send == 0, goto Send_FIN
+                
 
                 // update file offset for sending
                 file_offset_for_sending =+ (acknowledged[1] - old_acked);
@@ -461,6 +402,8 @@ void sender_action_Wait_for_Ack(void)
                 bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
                 in_Flight[1] = in_Flight[0] + current_window_size;
                 acknowledged[0] = in_Flight[1] + 1;
+                printf("window size set to %d bytes\n", current_window_size);
+
                 sender_current_state = Send_N_Packets;
                 break;
             }
@@ -479,8 +422,14 @@ void sender_action_Wait_for_Ack(void)
             //exit(EXIT_FAILURE);
             // TODO: handle
         }
+
+        //else if timeout
+            // update file offset for sending
+            // update current window size AMID, theoretical max
+            // go to Send N Packets
         else if(cpu_time_used_in_ms > timeoutInterval_in_ms) //TODO: figure out time to use
         {
+            printf("sender timed out\n");
             //TODO: update current window size based on bytes left, AMID, theoretical max
                 //in_Flight[1];
                 //acknowledged[0];
@@ -489,6 +438,9 @@ void sender_action_Wait_for_Ack(void)
             current_window_size = current_window_size + 1450 - (current_window_size % 1450);
             in_Flight[1] = in_Flight[0] + current_window_size;
             acknowledged[0] = in_Flight[1] + 1;
+
+            printf("window size set to %d bytes\n", current_window_size);
+
             fseek(file_pointer, file_offset_for_sending, SEEK_SET);
             sender_current_state = Send_N_Packets;
             break;
@@ -503,10 +455,7 @@ void sender_action_Wait_for_Ack(void)
             // go to Send N Packets
         
 
-        //else if timeout
-            // update file offset for sending
-            // update current window size AMID, theoretical max
-            // go to Send N Packets
+        
     
     }
     return;
@@ -547,6 +496,7 @@ void sender_action_Send_Fin(void)
     fin_packet.header.management_byte = fin_packet.header.management_byte | 0x02;
 
     ssize_t bytes_sent = send(sockfd, &fin_packet, sizeof(struct protocol_Packet), 0);
+    printf("Sending Fin Packet\n");
 
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -578,6 +528,7 @@ void sender_action_Wait_Fin_Ack(void)
             /* If its a Fin Ack*/
             if ((receive_buffer.management_byte & 0x2) == 0x2) {
                 //TODO: set up sliding window, current packet size, RTT?
+                printf("Receiver Fin Ack\n");
                 sender_current_state = sender_Done;
                 break;
             }
@@ -591,7 +542,7 @@ void sender_action_Wait_Fin_Ack(void)
         /* Check if the error is due to the socket being non-blocking */
         else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
         {
-            perror("Error receiving data");
+            perror("Error receiving data\n");
             //close(sockfd);
             //exit(EXIT_FAILURE);
             // TODO: handle
@@ -599,7 +550,8 @@ void sender_action_Wait_Fin_Ack(void)
 
         /* Check Timer for timeout */ //TODO: fix timer
         else if (cpu_time_used_in_seconds >= 2)
-        {
+        {   
+            printf("Fin Packet timed out\n");
             sender_current_state = Send_Fin;
             break;
         }
