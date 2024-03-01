@@ -387,7 +387,8 @@ void receiver_action_Wait_for_Pipeline(void)
         printf("Pipeline timer expired\n");
         for (int i = 0; i < MAX_WINDOW_SIZE; i++)
         {
-            if ((buffered_bytes[i] == '\0') || (buffered_bytes[i] == '\x1A'))
+            //if ((buffered_bytes[i] == '\0') || (buffered_bytes[i] == '\x1A'))
+            if (buffered_bytes[i] == EOF)
             {
                 break;
             }
