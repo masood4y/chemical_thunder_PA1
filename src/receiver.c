@@ -220,7 +220,7 @@ void receiver_action_Wait_Connection(void) {
             
             receiver_current_state = Wait_for_Packet;
         }
-    } else if (packet_size < 0) {
+    } else if (packet_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
         perror("Error with recvfrom.");
         // FIXME: handle this?
     }
@@ -265,7 +265,7 @@ void receiver_action_Wait_for_Packet(void) {
         } else if (is_FIN(buffer)) {
             receiver_current_state = Send_Fin_Ack;
         }
-    } else if (packet_size < 0) {
+    } else if (packet_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
         perror("Error with recv.");
         // FIXME: handle this?
     }
@@ -286,7 +286,7 @@ void receiver_action_Wait_for_Pipeline(void) {
             // If we already received this packet within the timer, it doesn't matter (data will be identical).
             buffered_packets[packet_num - next_needed_packet_num] = *(struct protocol_Packet *)buffer;
         }
-    } else if (packet_size < 0) {
+    } else if (packet_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
         perror("Error with recv while waiting for pipeline.");
         // FIXME: handle this?
     }
