@@ -436,6 +436,10 @@ void sender_action_Wait_for_Ack(void)
                 // go to Send N Packets
             current_window_size = current_window_size/2;
             current_window_size = current_window_size + 1450 - (current_window_size % 1450);
+            if (bytes_left_to_send < current_window_size)
+            {
+                current_window_size = bytes_left_to_send;
+            }
             in_Flight[1] = in_Flight[0] + current_window_size;
             acknowledged[0] = in_Flight[1] + 1;
 
