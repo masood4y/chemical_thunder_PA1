@@ -13,7 +13,7 @@
 #include <time.h>
 
 #define PROTOCOL_DATA_SIZE 1450
-#define MAX_WINDOW_SIZE 77827300 /* Set as (uint32_t / 3) */ 
+#define MAX_WINDOW_SIZE 58000  /* Set as 40 * PACKET_SIZE  */ 
 //#define MAX_WINDOW_SIZE 21750  /* Set as (uint16_t / 3) */ 
 #define PACKET_SIZE 1450 // Just data.
 

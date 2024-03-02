@@ -315,7 +315,7 @@ void sender_action_Send_N_Packets(void)
             packet_being_sent.header.bytes_of_data = i;
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
             printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
-
+            //printf("Packet num %d sent this:\n%s\n", packet_being_sent.header.seq_ack_num, packet_being_sent.data);
             // TODO: error checking on send
             if (bytes_sent == -1){
                 // handle
@@ -433,7 +433,6 @@ void sender_action_Wait_for_Ack(void)
                     sender_current_state = Send_Fin;
                     break;
                 }
-                
 
                 // update file offset for sending
                 file_offset_for_sending =+ (acknowledged[1] - old_acked);
