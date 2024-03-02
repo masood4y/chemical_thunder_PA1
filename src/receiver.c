@@ -28,6 +28,8 @@ static time_t timer_start;
 
 
 static char *buffered_bytes;
+static uint16_t last_valid_buffer_index;  
+static uint16_t first_valid_buffer_index = 1;
 static uint16_t next_needed_seq_num;
 static uint16_t received[2];
 static uint16_t anticipate_next[2];
@@ -303,6 +305,7 @@ void receiver_action_Wait_for_Packet(void) {
         {
             // Check if valid sequence packet or is a duplicate.
             uint16_t sequence_num_received = ((struct protocol_Packet *)&buffer)->header.seq_ack_num;
+            uint16_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
             printf("received Packet %d\n", sequence_num_received);
 
             if (is_duplicate(sequence_num_received))
@@ -329,15 +332,28 @@ void receiver_action_Wait_for_Packet(void) {
                     // FIXME: Handle this?
                 }
             } 
-            else {                
+            else {      
+                last_valid_buffer_index = 0;  
+                first_valid_buffer_index = 1;
                 uint16_t buffer_index;
                 uint16_t local_seq_num = sequence_num_received;
+                bytes_data_in_packet;
+                buffer_index = local_seq_num - next_needed_seq_num;
+                if (buffer_index == 0) 
+                {
+                    first_valid_buffer_index = 0;
+                }
+
                  // buffered_bytes_index = seqnum_byte - next_anticipated_byte
-                for(int i = 0; i < PROTOCOL_DATA_SIZE; i++) {
+                for(int i = 0; i < bytes_data_in_packet; i++) {
                     buffer_index = local_seq_num - next_needed_seq_num;
+                    
                     buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
                     local_seq_num++;
-                }              
+                }
+                if (buffer_index >= last_valid_buffer_index) {
+                    last_valid_buffer_index = buffer_index;       
+                }           
 
                 // Start small countdown-timer and now wait for pipeline.
                 timer_start = clock();
@@ -372,18 +388,30 @@ void receiver_action_Wait_for_Pipeline(void)
     if (packet_size > 0 && is_data(buffer)) 
     {
         uint16_t sequence_num_received = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
+        uint16_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
         printf("Received packet %d\n", sequence_num_received);
         if (!is_duplicate(sequence_num_received))
-        {
+        {   
+
             uint16_t buffer_index;
             uint16_t local_seq_num = sequence_num_received;
-            // buffered_bytes_index = seqnum_byte - next_anticipated_byte
-            for(int i = 0; i < PROTOCOL_DATA_SIZE; i++) 
+            bytes_data_in_packet;
+            buffer_index = local_seq_num - next_needed_seq_num;
+            if (buffer_index == 0) 
             {
+                first_valid_buffer_index = 0;
+            }
+
+                // buffered_bytes_index = seqnum_byte - next_anticipated_byte
+            for(int i = 0; i < bytes_data_in_packet; i++) {
                 buffer_index = local_seq_num - next_needed_seq_num;
+                            
                 buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
                 local_seq_num++;
-            } 
+            }
+            if (buffer_index >= last_valid_buffer_index) {
+                last_valid_buffer_index = buffer_index;       
+            }         
         }            
     }
     else if ((packet_size == -1) && (errno != EAGAIN && errno != EWOULDBLOCK)) 
@@ -396,21 +424,16 @@ void receiver_action_Wait_for_Pipeline(void)
     
     if (time_elapsed_ms > SHORT_TIMER_MS) 
     {
-
         printf("Pipeline timer expired\n");
-        for (int i = 0; i < MAX_WINDOW_SIZE; i++)
-        {
-            //if ((buffered_bytes[i] == '\0') || (buffered_bytes[i] == '\x1A'))
-            if (buffered_bytes[i] == EOF)
-            {
-                break;
+        if (first_valid_buffer_index == 0){
+            for (int i = 0; i <= last_valid_buffer_index; i++)
+            {   
+                fputc(buffered_bytes[i], receiver_file);
+                next_needed_seq_num++;
+                buffered_bytes[i] = EOF;
             }
-            fputc(buffered_bytes[i], receiver_file);
-            next_needed_seq_num++;
-            buffered_bytes[i] = EOF;
         }
-
-
+        
         // Send Cumulative ACK
         struct protocol_Header ACK_packet;
         memset(&ACK_packet, 0, sizeof(ACK_packet));

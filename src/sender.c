@@ -300,6 +300,7 @@ void sender_action_Send_N_Packets(void)
         {
             int i;
             packet_being_sent.header.management_byte = 0;
+            packet_being_sent.header.bytes_of_data = 0;
             packet_being_sent.header.seq_ack_num = sending_index;
             for (i = 0; (i < PROTOCOL_DATA_SIZE) && (sending_index <= in_Flight[1]); i++)
             {
@@ -311,6 +312,7 @@ void sender_action_Send_N_Packets(void)
                     packet_being_sent.data[j] = EOF;
                 }
             }
+            packet_being_sent.header.bytes_of_data = i;
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
             printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
 

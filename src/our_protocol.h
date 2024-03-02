@@ -23,6 +23,8 @@ struct protocol_Header
 
     /* Servers as Seq num for sender, and Ack num for Receiver */
     uint16_t seq_ack_num;
+    uint16_t bytes_of_data;
+
 };
 
 struct protocol_Packet
