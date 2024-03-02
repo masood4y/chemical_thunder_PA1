@@ -400,7 +400,11 @@ void sender_action_Wait_for_Ack(void)
                 
                 //TODO: update current window size based on bytes left, AMID, theoretical max
                 if (current_window_size < MAX_WINDOW_SIZE) {
-                    current_window_size = current_window_size + PROTOCOL_DATA_SIZE;
+                    current_window_size = current_window_size + PROTOCOL_DATA_SIZE - (current_window_size % PROTOCOL_DATA_SIZE);
+                }
+                else if (current_window_size >= MAX_WINDOW_SIZE)
+                {
+                    current_window_size = MAX_WINDOW_SIZE;
                 }
                 if (bytes_left_to_send < current_window_size){
                     current_window_size = bytes_left_to_send;
@@ -441,7 +445,10 @@ void sender_action_Wait_for_Ack(void)
                 //acknowledged[0];
                 // go to Send N Packets
             current_window_size = current_window_size/2;
-            current_window_size = current_window_size + PROTOCOL_DATA_SIZE - (current_window_size % PROTOCOL_DATA_SIZE);
+            if ((current_window_size % PROTOCOL_DATA_SIZE) != 0)
+            {
+                current_window_size = current_window_size + PROTOCOL_DATA_SIZE - (current_window_size % PROTOCOL_DATA_SIZE);
+            }
             if (bytes_left_to_send < current_window_size)
             {
                 current_window_size = bytes_left_to_send;
