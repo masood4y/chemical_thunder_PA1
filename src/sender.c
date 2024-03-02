@@ -467,7 +467,7 @@ void sender_action_Wait_for_Ack(void)
             // update file offset for sending
             // update current window size AMID, theoretical max
             // go to Send N Packets
-        else if(cpu_time_used_in_ms > timeoutInterval_in_ms) //TODO: figure out time to use
+        if(cpu_time_used_in_ms > timeoutInterval_in_ms) //TODO: figure out time to use
         {
             printf("sender timed out\n");
             //TODO: update current window size based on bytes left, AMID, theoretical max
