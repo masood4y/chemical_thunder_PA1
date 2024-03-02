@@ -417,7 +417,6 @@ void receiver_action_Wait_for_Pipeline(void)
         received[1] = anticipate_next[0] - 1;
 
         receiver_current_state = Wait_for_Packet;
-
     }
 }
 

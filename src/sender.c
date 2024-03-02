@@ -105,7 +105,7 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
 
     current_window_size = 1450;
     if (bytes_left_to_send < current_window_size){
-            current_window_size = bytes_left_to_send;
+        current_window_size = bytes_left_to_send;
     }
     in_Flight[0] = 0;
     in_Flight[1] = in_Flight[0] + current_window_size;
@@ -375,7 +375,7 @@ void sender_action_Wait_for_Ack(void)
             {
                 printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
-                uint16_t old_acked = acknowledged[1];
+                uint16_t old_acked = acknowledged[1] + 1;
                 acknowledged[1] = ack_num - 1;
                 
                 // update bytes left, if bytes left to send == 0, goto Send_FIN
@@ -399,7 +399,7 @@ void sender_action_Wait_for_Ack(void)
                 if (bytes_left_to_send < current_window_size){
                     current_window_size = bytes_left_to_send;
                 }
-                bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+
                 in_Flight[1] = in_Flight[0] + current_window_size;
                 acknowledged[0] = in_Flight[1] + 1;
                 printf("window size set to %d bytes\n", current_window_size);
