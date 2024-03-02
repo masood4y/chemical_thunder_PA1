@@ -303,12 +303,12 @@ void receiver_action_Wait_for_Packet(void) {
 
             if (is_duplicate(sequence_num_received))
             {   
-                printf("rPacket %d was a duplicate\n", sequence_num_received);
+                printf("Packet %d was a duplicate\n", sequence_num_received);
                 // Duplicate or invalid, send cumulative ACK right away.
                 struct protocol_Header ACK_packet;
                 memset(&ACK_packet, 0, sizeof(ACK_packet));
 
-                ACK_packet.seq_ack_num = next_needed_seq_num;
+                ACK_packet.seq_ack_num = sequence_num_received + PROTOCOL_DATA_SIZE;
                 // Everything else should already be zero'd...
                 
                 if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {

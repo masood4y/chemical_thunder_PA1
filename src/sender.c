@@ -238,7 +238,6 @@ void sender_action_Start_Connection(void)
     while(1)
     {
         end = clock();
-        //cpu_time_used_in_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
         cpu_time_used_in_ms = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
 
         /* Check Socket for response */
