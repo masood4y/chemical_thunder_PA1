@@ -27,9 +27,9 @@ static unsigned long long int bytes_left_to_send;
 static FILE *file_pointer;
 static int sockfd;
 
-static uint16_t acknowledged[2];
-static uint16_t in_Flight[2];
-static uint16_t current_window_size;
+static uint32_t acknowledged[2];
+static uint32_t in_Flight[2];
+static uint32_t current_window_size;
 static double RTT_in_ms;
 static double timeoutInterval_in_ms;
 static double devRTT;
@@ -73,7 +73,7 @@ void sender_action_Start_Connection(void);
 /* Send Data*/
 void sender_action_Send_N_Packets(void);
 void sender_action_Wait_for_Ack(void);
-int valid_ack_num(uint16_t ack_num);
+int valid_ack_num(uint32_t ack_num);
 
 /* Connection Teardown */
 void sender_action_Send_Fin(void);
@@ -139,7 +139,7 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     
     /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
     if ((unsigned long long int)file_size <= bytesToTransfer) {
-        bytes_left_to_send = (unsigned long long int)(file_size - 1);
+        bytes_left_to_send = (unsigned long long int)(file_size);
     }
     else {
         bytes_left_to_send = bytesToTransfer;
@@ -289,7 +289,7 @@ void sender_action_Start_Connection(void)
 /* Send Data*/
 void sender_action_Send_N_Packets(void) 
 {
-    uint16_t sending_index;
+    uint32_t sending_index;
     struct protocol_Packet packet_being_sent;
     sending_index = in_Flight[0];
     int first_packet = 1;
@@ -414,17 +414,17 @@ void sender_action_Wait_for_Ack(void)
         if (bytes_received > 0) 
         {
             /* If its a Valid Seq number */
-            uint16_t ack_num = receive_buffer.seq_ack_num;
+            uint32_t ack_num = receive_buffer.seq_ack_num;
             if (valid_ack_num(ack_num)) 
             {
                 printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
                 printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
-                uint16_t old_acked = acknowledged[1];
+                uint32_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
                 
                 // update bytes left, if bytes left to send == 0, goto Send_FIN
-                uint16_t difference = (acknowledged[1] - old_acked);
+                uint32_t difference = (acknowledged[1] - old_acked);
 		        printf("difference is: %d\n", difference);
 		        bytes_left_to_send = bytes_left_to_send - (difference);
                 printf("%lld bytes left to send now\n", bytes_left_to_send);
@@ -519,7 +519,7 @@ void sender_action_Wait_for_Ack(void)
     return;
 }
 
-int valid_ack_num(uint16_t ack_num) 
+int valid_ack_num(uint32_t ack_num) 
 {
 
     if (in_Flight[0] < in_Flight[1]){

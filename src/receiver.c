@@ -15,8 +15,8 @@
 #include <fcntl.h>
 
 #define LONG_TIMER_MS 5000 // 5s
-#define SHORT_TIMER_MS 0.5
-#define BUFFER_SIZE 1458 // FIXME: this is arbitrary for now...
+#define SHORT_TIMER_MS 1
+#define BUFFER_SIZE 1460 // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
 
@@ -28,11 +28,11 @@ static time_t timer_start;
 
 
 static char *buffered_bytes;
-static uint16_t last_valid_buffer_index;  
-static uint16_t first_valid_buffer_index = 1;
-static uint16_t next_needed_seq_num;
-static uint16_t received[2];
-static uint16_t anticipate_next[2];
+static uint32_t last_valid_buffer_index;  
+static uint32_t first_valid_buffer_index = 1;
+static uint32_t next_needed_seq_num;
+static uint32_t received[2];
+static uint32_t anticipate_next[2];
 
 enum receiver_state
 {
@@ -60,7 +60,7 @@ void receiver_finish(void);
 int is_SYNC(const char* packet);
 int is_data(const char* packet);
 int is_FIN(const char* packet);
-int is_duplicate(uint16_t seq_num);
+int is_duplicate(uint32_t seq_num);
 
 /* Connection Setup */
 void receiver_action_Wait_Connection(void);
@@ -220,7 +220,7 @@ int is_FIN(const char* packet) {
     return FIN_bit == 0x2;
 }
 
-int is_duplicate(uint16_t seq_num) 
+int is_duplicate(uint32_t seq_num) 
 {
     if (received[0] < received[1])
     {
@@ -304,8 +304,8 @@ void receiver_action_Wait_for_Packet(void) {
         else if (is_data(buffer)) 
         {
             // Check if valid sequence packet or is a duplicate.
-            uint16_t sequence_num_received = ((struct protocol_Packet *)&buffer)->header.seq_ack_num;
-            uint16_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
+            uint32_t sequence_num_received = ((struct protocol_Packet *)&buffer)->header.seq_ack_num;
+            uint32_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
             printf("received Packet %d\n", sequence_num_received);
 
             if (is_duplicate(sequence_num_received))
@@ -326,8 +326,8 @@ void receiver_action_Wait_for_Packet(void) {
             else {      
                 last_valid_buffer_index = 0;  
                 first_valid_buffer_index = 1;
-                uint16_t buffer_index;
-                uint16_t local_seq_num = sequence_num_received;
+                uint32_t buffer_index;
+                uint32_t local_seq_num = sequence_num_received;
                 buffer_index = local_seq_num - next_needed_seq_num;
                 if (buffer_index == 0) 
                 {
@@ -379,14 +379,14 @@ void receiver_action_Wait_for_Pipeline(void)
 
     if (packet_size > 0 && is_data(buffer)) 
     {
-        uint16_t sequence_num_received = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
-        uint16_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
+        uint32_t sequence_num_received = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
+        uint32_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
         printf("Received packet %d\n", sequence_num_received);
         if (!is_duplicate(sequence_num_received))
         {   
 
-            uint16_t buffer_index;
-            uint16_t local_seq_num = sequence_num_received;
+            uint32_t buffer_index;
+            uint32_t local_seq_num = sequence_num_received;
             buffer_index = local_seq_num - next_needed_seq_num;
             if (buffer_index == 0) 
             {

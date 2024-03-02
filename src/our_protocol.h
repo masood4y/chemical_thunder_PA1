@@ -13,16 +13,18 @@
 #include <time.h>
 
 #define PROTOCOL_DATA_SIZE 1450
-#define MAX_WINDOW_SIZE 21750  /* Set as (uint16_t / 3) */ 
+#define MAX_WINDOW_SIZE 77827300 /* Set as (uint32_t / 3) */ 
+//#define MAX_WINDOW_SIZE 21750  /* Set as (uint16_t / 3) */ 
 #define PACKET_SIZE 1450 // Just data.
 
+//987348
 struct protocol_Header
 {
     /* Sync bit:7, Sync Ack bit:6, 0:5, 0:4, 0:3, 0:2, Fin bit:1, Fin ack bit:0 */
     uint8_t management_byte;
 
     /* Servers as Seq num for sender, and Ack num for Receiver */
-    uint16_t seq_ack_num;
+    uint32_t seq_ack_num;
     uint16_t bytes_of_data;
 
 };
