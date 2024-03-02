@@ -15,8 +15,8 @@
 #include <fcntl.h>
 
 #define LONG_TIMER_MS 5000 // 5s
-#define SHORT_TIMER_MS 1
-#define BUFFER_SIZE 1464 // FIXME: this is arbitrary for now...
+#define SHORT_TIMER_MS 3
+#define BUFFER_SIZE (sizeof(struct protocol_Packet) + 16) // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
 
@@ -329,7 +329,7 @@ void receiver_action_Wait_for_Packet(void) {
                 uint32_t buffer_index;
                 uint32_t local_seq_num = sequence_num_received;
                 buffer_index = local_seq_num - next_needed_seq_num;
-                //printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
+                printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
                 if (buffer_index == 0) 
                 {
                     first_valid_buffer_index = 0;
@@ -389,7 +389,7 @@ void receiver_action_Wait_for_Pipeline(void)
             uint32_t buffer_index;
             uint32_t local_seq_num = sequence_num_received;
             buffer_index = local_seq_num - next_needed_seq_num;
-            //printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
+            printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
             if (buffer_index == 0) 
             {
                 first_valid_buffer_index = 0;
