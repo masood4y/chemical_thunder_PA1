@@ -31,11 +31,9 @@ static uint16_t acknowledged[2];
 static uint16_t in_Flight[2];
 static uint16_t current_window_size;
 static double RTT_in_ms;
-static double timeoutInterval_in_ms = 2000;
+static double timeoutInterval_in_ms;
 static double devRTT;
 
-
-static const uint16_t max_window_size = 21750; /* Set as (uint16_t / 3) */ 
 
 static clock_t start, end;
 static double cpu_time_used_in_seconds;
@@ -103,12 +101,12 @@ int sender_init(char* filename, unsigned long long int bytesToTransfer,
         return -1;
     }
 
-    current_window_size = 1450;
+    current_window_size = PROTOCOL_DATA_SIZE;
     if (bytes_left_to_send < current_window_size){
         current_window_size = bytes_left_to_send;
     }
     in_Flight[0] = 0;
-    in_Flight[1] = in_Flight[0] + current_window_size;
+    in_Flight[1] = in_Flight[0] + (current_window_size - 1);
     acknowledged[0] = in_Flight[1] + 1;
     acknowledged[1] = in_Flight[0] - 1;
 
@@ -140,6 +138,11 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     }
     else {
         bytes_left_to_send = bytesToTransfer;
+    }
+    if (bytes_left_to_send == 0) 
+    {
+        printf("bytes left to send is 0\n");
+        return -1;
     }
     return 0;
 }
@@ -248,7 +251,7 @@ void sender_action_Start_Connection(void)
                 //TODO: set up sliding window, current packet size, RTT?
                 RTT_in_ms = cpu_time_used_in_ms;
                 devRTT = RTT_in_ms /2;
-                timeoutInterval_in_ms = RTT_in_ms + 4 * devRTT;
+                timeoutInterval_in_ms = RTT_in_ms + (4 * devRTT);
                 sender_current_state = Send_N_Packets;
                 break;
             }
@@ -298,7 +301,7 @@ void sender_action_Send_N_Packets(void)
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
             }
-            if (i <= 1450) {
+            if (i < PROTOCOL_DATA_SIZE) {
                 for (int j = i; j < PROTOCOL_DATA_SIZE; j++){
                     packet_being_sent.data[j] = EOF;
                 }
@@ -324,13 +327,13 @@ void sender_action_Send_N_Packets(void)
             int i;
             packet_being_sent.header.management_byte = 0;
             packet_being_sent.header.seq_ack_num = sending_index;
-            for (i = 0; (i < 1450 && ((sending_index <= in_Flight[1]) || (sending_index >= in_Flight[0]))); i++)
+            for (i = 0; (i < PROTOCOL_DATA_SIZE && ((sending_index <= in_Flight[1]) || (sending_index >= in_Flight[0]))); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
                 sending_index++; 
             }
-            if (i <= 1450) {
-                for (int j = i; j < 1450; j++){
+            if (i < PROTOCOL_DATA_SIZE) {
+                for (int j = i; j < PROTOCOL_DATA_SIZE; j++){
                     packet_being_sent.data[j] = EOF;
                 }
             }
@@ -343,7 +346,7 @@ void sender_action_Send_N_Packets(void)
             if (first_packet)
             {
                 start = clock();
-                first_packet = -1;
+                first_packet = 0;
             }
         }
     }
@@ -380,8 +383,8 @@ void sender_action_Wait_for_Ack(void)
                 
                 // update bytes left, if bytes left to send == 0, goto Send_FIN
                 uint16_t difference = (acknowledged[1] - old_acked);
-		printf("difference is: %d\n", difference);
-		bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+		        printf("difference is: %d\n", difference);
+		        bytes_left_to_send = bytes_left_to_send - (difference);
                 printf("%lld bytes left to send now\n", bytes_left_to_send);
                 in_Flight[0] = ack_num;
                 if (bytes_left_to_send == 0){
@@ -395,14 +398,14 @@ void sender_action_Wait_for_Ack(void)
                 fseek(file_pointer, file_offset_for_sending, SEEK_SET);
                 
                 //TODO: update current window size based on bytes left, AMID, theoretical max
-                if (current_window_size < max_window_size) {
-                    current_window_size = current_window_size + 1450;
+                if (current_window_size < MAX_WINDOW_SIZE) {
+                    current_window_size = current_window_size + PROTOCOL_DATA_SIZE;
                 }
                 if (bytes_left_to_send < current_window_size){
                     current_window_size = bytes_left_to_send;
                 }
 
-                in_Flight[1] = in_Flight[0] + current_window_size;
+                in_Flight[1] = in_Flight[0] + (current_window_size - 1);
                 acknowledged[0] = in_Flight[1] + 1;
                 printf("window size set to %d bytes\n", current_window_size);
 
@@ -437,12 +440,12 @@ void sender_action_Wait_for_Ack(void)
                 //acknowledged[0];
                 // go to Send N Packets
             current_window_size = current_window_size/2;
-            current_window_size = current_window_size + 1450 - (current_window_size % 1450);
+            current_window_size = current_window_size + PROTOCOL_DATA_SIZE - (current_window_size % PROTOCOL_DATA_SIZE);
             if (bytes_left_to_send < current_window_size)
             {
                 current_window_size = bytes_left_to_send;
             }
-            in_Flight[1] = in_Flight[0] + current_window_size;
+            in_Flight[1] = in_Flight[0] + current_window_size - 1;
             acknowledged[0] = in_Flight[1] + 1;
 
             printf("window size set to %d bytes\n", current_window_size);
