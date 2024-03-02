@@ -15,7 +15,7 @@
 #include <fcntl.h>
 
 #define LONG_TIMER_MS 5000 // 5s
-#define SHORT_TIMER_MS 100
+#define SHORT_TIMER_MS 5
 #define BUFFER_SIZE 1455 // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
