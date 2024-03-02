@@ -131,10 +131,15 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     file_size = ftell(file_pointer);
     fseek(file_pointer, 0, SEEK_SET);
     file_offset_for_sending = 0;
+    if (file_size < 2) 
+    {
+        printf("File too small\n");
+        return -1;
+    }
     
     /* Set bytes_left_to_send as MIN(bytesToTransfer, Filesize) */
-    if ((unsigned long long int)file_size < bytesToTransfer) {
-        bytes_left_to_send = (unsigned long long int)file_size;
+    if ((unsigned long long int)file_size <= bytesToTransfer) {
+        bytes_left_to_send = (unsigned long long int)(file_size - 1);
     }
     else {
         bytes_left_to_send = bytesToTransfer;
