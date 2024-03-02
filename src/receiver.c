@@ -16,7 +16,7 @@
 
 #define LONG_TIMER_MS 5000 // 5s
 #define SHORT_TIMER_MS 0.5
-#define BUFFER_SIZE 1455 // FIXME: this is arbitrary for now...
+#define BUFFER_SIZE 1458 // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
 
@@ -314,17 +314,8 @@ void receiver_action_Wait_for_Packet(void) {
                 // Duplicate or invalid, send cumulative ACK right away.
                 struct protocol_Header ACK_packet;
                 memset(&ACK_packet, 0, sizeof(ACK_packet));
-                uint16_t i;
-                for(i = 0; i < PROTOCOL_DATA_SIZE; i++) 
-                {
-                    if (((struct protocol_Packet *)buffer)->data[i] == EOF)
-                    {
-                        break;
-                    }
-                }
-
-                
-                ACK_packet.seq_ack_num = sequence_num_received + i;
+                                
+                ACK_packet.seq_ack_num = sequence_num_received + bytes_data_in_packet;
                 // Everything else should already be zero'd...
                 
                 if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
@@ -344,13 +335,15 @@ void receiver_action_Wait_for_Packet(void) {
                 }
 
                  // buffered_bytes_index = seqnum_byte - next_anticipated_byte
-                for(int i = 0; i < bytes_data_in_packet; i++) {
+                for(int i = 0; i < bytes_data_in_packet; i++) 
+                {
                     buffer_index = local_seq_num - next_needed_seq_num;
                     
                     buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
                     local_seq_num++;
                 }
-                if (buffer_index >= last_valid_buffer_index) {
+                if (buffer_index >= last_valid_buffer_index) 
+                {
                     last_valid_buffer_index = buffer_index;       
                 }           
 

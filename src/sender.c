@@ -298,7 +298,7 @@ void sender_action_Send_N_Packets(void)
     {
         while(sending_index <= in_Flight[1])
         {
-            int i;
+            unsigned int i;
             packet_being_sent.header.management_byte = 0;
             packet_being_sent.header.bytes_of_data = 0;
             packet_being_sent.header.seq_ack_num = sending_index;
@@ -334,6 +334,7 @@ void sender_action_Send_N_Packets(void)
             int i;
             packet_being_sent.header.management_byte = 0;
             packet_being_sent.header.seq_ack_num = sending_index;
+            packet_being_sent.header.bytes_of_data = 0;
             for (i = 0; (i < PROTOCOL_DATA_SIZE && ((sending_index <= in_Flight[1]) || (sending_index >= in_Flight[0]))); i++)
             {
                 packet_being_sent.data[i] = fgetc(file_pointer);
@@ -344,6 +345,7 @@ void sender_action_Send_N_Packets(void)
                     packet_being_sent.data[j] = EOF;
                 }
             }
+            packet_being_sent.header.bytes_of_data = i;
             ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
             printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
             // TODO: error checking on send
@@ -362,6 +364,7 @@ void sender_action_Send_N_Packets(void)
         int i;
         packet_being_sent.header.management_byte = 0;
         packet_being_sent.header.seq_ack_num = sending_index;
+        packet_being_sent.header.bytes_of_data = 0;
         
         for (i = 0; i < PROTOCOL_DATA_SIZE; i++)
         {
@@ -375,6 +378,7 @@ void sender_action_Send_N_Packets(void)
                 packet_being_sent.data[i] = EOF;
             }
         }
+        packet_being_sent.header.bytes_of_data = 1;
         ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
         printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
             // TODO: error checking on send
