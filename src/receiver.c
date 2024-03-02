@@ -141,7 +141,7 @@ int receiver_init(unsigned short int myUDPport,
 
     // Open file for writing.
     FILE *filePointer;
-    filePointer = fopen(destinationFile, "wb");
+    filePointer = fopen(destinationFile, "wb+");
     printf("opening file\n");
 
     if (filePointer == NULL) {
