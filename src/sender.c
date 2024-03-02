@@ -31,7 +31,7 @@ static uint16_t acknowledged[2];
 static uint16_t in_Flight[2];
 static uint16_t current_window_size;
 static double RTT_in_ms;
-static double timeoutInterval_in_ms;
+static double timeoutInterval_in_ms = 2000;
 static double devRTT;
 
 
@@ -375,11 +375,13 @@ void sender_action_Wait_for_Ack(void)
             {
                 printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
-                uint16_t old_acked = acknowledged[1] + 1;
+                uint16_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
                 
                 // update bytes left, if bytes left to send == 0, goto Send_FIN
-                bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
+                uint16_t difference = (acknowledged[1] - old_acked);
+		printf("difference is: %d\n", difference);
+		bytes_left_to_send = bytes_left_to_send - (acknowledged[1] - old_acked);
                 printf("%lld bytes left to send now\n", bytes_left_to_send);
                 in_Flight[0] = ack_num;
                 if (bytes_left_to_send == 0){
