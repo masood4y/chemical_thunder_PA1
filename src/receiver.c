@@ -171,7 +171,7 @@ int receiver_init(unsigned short int myUDPport,
     
     next_needed_seq_num = 0;
     anticipate_next[0] = next_needed_seq_num;
-    anticipate_next[1] = anticipate_next[0] + MAX_WINDOW_SIZE;
+    anticipate_next[1] = anticipate_next[0] + (MAX_WINDOW_SIZE - 1);
     received[0] = anticipate_next[1] + 1;
     received[1] = anticipate_next[0] - 1;
     
@@ -220,7 +220,6 @@ int is_FIN(const char* packet) {
 
 int is_duplicate(uint16_t seq_num) 
 {
-
     if (received[0] < received[1])
     {
         return ((seq_num >= received[0]) && (seq_num <= received[1]));
@@ -228,6 +227,10 @@ int is_duplicate(uint16_t seq_num)
     else if (received[0] > received[1]) 
     {
         return ((seq_num >= received[0]) || (seq_num <= received[1]));
+    }
+    else if (received[0] == received[1])
+    {
+        return (seq_num == received[0]);
     }
     return 0;
 }
@@ -296,7 +299,8 @@ void receiver_action_Wait_for_Packet(void) {
                 // FIXME: Handle this?
             }
         }
-        else if (is_data(buffer)) {
+        else if (is_data(buffer)) 
+        {
             // Check if valid sequence packet or is a duplicate.
             uint16_t sequence_num_received = ((struct protocol_Packet *)&buffer)->header.seq_ack_num;
             printf("received Packet %d\n", sequence_num_received);
@@ -421,7 +425,7 @@ void receiver_action_Wait_for_Pipeline(void)
         printf("sending ack, next needed byte: %d\n", next_needed_seq_num);
 
         anticipate_next[0] = next_needed_seq_num;
-        anticipate_next[1] = anticipate_next[0] + MAX_WINDOW_SIZE;
+        anticipate_next[1] = anticipate_next[0] + (MAX_WINDOW_SIZE - 1);
         received[0] = anticipate_next[1] + 1;
         received[1] = anticipate_next[0] - 1;
 
