@@ -307,8 +307,17 @@ void receiver_action_Wait_for_Packet(void) {
                 // Duplicate or invalid, send cumulative ACK right away.
                 struct protocol_Header ACK_packet;
                 memset(&ACK_packet, 0, sizeof(ACK_packet));
+                uint16_t i;
+                for(i = 0; i < PROTOCOL_DATA_SIZE; i++) 
+                {
+                    if (((struct protocol_Packet *)buffer)->data[i] == EOF)
+                    {
+                        break;
+                    }
+                }
 
-                ACK_packet.seq_ack_num = sequence_num_received + PROTOCOL_DATA_SIZE;
+                
+                ACK_packet.seq_ack_num = sequence_num_received + i;
                 // Everything else should already be zero'd...
                 
                 if (send(receiver_socket, &ACK_packet, sizeof(ACK_packet), 0) < 0) {
