@@ -337,7 +337,6 @@ void receiver_action_Wait_for_Packet(void) {
                 first_valid_buffer_index = 1;
                 uint16_t buffer_index;
                 uint16_t local_seq_num = sequence_num_received;
-                bytes_data_in_packet;
                 buffer_index = local_seq_num - next_needed_seq_num;
                 if (buffer_index == 0) 
                 {
@@ -395,7 +394,6 @@ void receiver_action_Wait_for_Pipeline(void)
 
             uint16_t buffer_index;
             uint16_t local_seq_num = sequence_num_received;
-            bytes_data_in_packet;
             buffer_index = local_seq_num - next_needed_seq_num;
             if (buffer_index == 0) 
             {
