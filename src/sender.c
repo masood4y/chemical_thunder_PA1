@@ -526,7 +526,7 @@ void sender_action_Wait_Fin_Ack(void)
         if (bytes_received > 0) 
         {
             /* If its a Fin Ack*/
-            if ((receive_buffer.management_byte & 0x2) == 0x2) {
+            if ((receive_buffer.management_byte & 0x1) == 0x1) {
                 //TODO: set up sliding window, current packet size, RTT?
                 printf("Receiver Fin Ack\n");
                 sender_current_state = sender_Done;
