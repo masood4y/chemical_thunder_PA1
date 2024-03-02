@@ -350,6 +350,36 @@ void sender_action_Send_N_Packets(void)
             }
         }
     }
+    else if (in_Flight[0] == in_Flight[1])
+    {
+        int i;
+        packet_being_sent.header.management_byte = 0;
+        packet_being_sent.header.seq_ack_num = sending_index;
+        
+        for (i = 0; i < PROTOCOL_DATA_SIZE; i++)
+        {
+            if (i == 0)
+            {
+                packet_being_sent.data[i] = fgetc(file_pointer);
+                sending_index++; 
+            }
+            else 
+            {
+                packet_being_sent.data[i] = EOF;
+            }
+        }
+        ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
+        printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
+            // TODO: error checking on send
+        if (bytes_sent == -1){
+            // handle
+        }
+        if (first_packet)
+        {
+            start = clock();
+            first_packet = 0;
+        }
+    }
     sender_current_state = Wait_for_Ack;
     return;
 }
@@ -482,7 +512,7 @@ int valid_ack_num(uint16_t ack_num)
 {
 
     if (in_Flight[0] < in_Flight[1]){
-        if ((ack_num >= in_Flight[0]) && (ack_num <= (in_Flight[1] + 1))){
+        if ((ack_num > in_Flight[0]) && (ack_num <= (in_Flight[1] + 1))){
             return 1;
         }
         return 0;
@@ -490,7 +520,15 @@ int valid_ack_num(uint16_t ack_num)
 
     else if (in_Flight[0] > in_Flight[1])
     {   
-        if ((ack_num >= in_Flight[0]) || (ack_num <= (in_Flight[1] + 1)))
+        if ((ack_num > in_Flight[0]) || (ack_num <= (in_Flight[1] + 1)))
+        {
+            return 1;
+        }
+        return 0;
+    }
+    else if (in_Flight[0] == in_Flight[1]) 
+    {
+        if (ack_num == (in_Flight[1] + 1))
         {
             return 1;
         }
