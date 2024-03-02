@@ -252,6 +252,7 @@ void sender_action_Start_Connection(void)
                 RTT_in_ms = cpu_time_used_in_ms;
                 devRTT = RTT_in_ms /2;
                 timeoutInterval_in_ms = RTT_in_ms + (4 * devRTT);
+                printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
                 sender_current_state = Send_N_Packets;
                 break;
             }
@@ -378,6 +379,7 @@ void sender_action_Wait_for_Ack(void)
             {
                 printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
+                printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
                 uint16_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
                 
