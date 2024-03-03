@@ -340,7 +340,7 @@ void sender_action_Send_N_Packets(void)
     while (sending_index_in_range(sending_index))
     {
         unsigned int i;
-        unsigned long offset;
+        //unsigned long offset;
         //offset = ftell(file_pointer);
         //printf("File off set before packet is: %d\n", offset);
         memset(&packet_being_sent, 0, sizeof(packet_being_sent));
