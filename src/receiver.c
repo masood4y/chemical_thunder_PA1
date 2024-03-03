@@ -3,14 +3,11 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include <pthread.h>
 #include <errno.h>
-
 #include "our_protocol.h"
 #include <fcntl.h>
 
@@ -19,14 +16,11 @@
 #define BUFFER_SIZE (sizeof(struct protocol_Packet) + 16) 
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
 
-
 static unsigned int receiver_current_state;
 static unsigned long long int receiver_write_rate;
 static FILE *receiver_file;
 static int receiver_socket;
 static time_t timer_start;
-
-
 static char *buffered_bytes;
 static int64_t last_valid_buffer_index;  
 static int64_t first_valid_buffer_index;
@@ -78,39 +72,51 @@ void receiver_action_Send_Fin_Ack(void);
 void receiver_action_Wait_inCase(void);
 /* ================ Function Declarations END ================ */
 
+/**
+ * @brief Main state machine for the receiver.
+ * 
+ * This function initializes the receiver and then continually processes states
+ * as part of the main state machine. Handles different states like waiting for connection,
+ * waiting for a packet, processing the packet pipeline, sending a FIN ACK, and a waiting state
+ * post-FIN ACK. This exits once the receiver reaches the Finished state.
+ *
+ * @param myUDPport The UDP port to bind the receiver socket to.
+ * @param destinationFile The path to the file where the received data will be written.
+ * @param writeRate The rate at which data will be written to the file.
+ */
+void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate) {
 
-void rrecv(unsigned short int myUDPport, 
-            char* destinationFile, 
-            unsigned long long int writeRate) 
-            {
-
+    // Initialize and handle if failed initialization.
     if (!receiver_init(myUDPport, destinationFile, writeRate)) {
-        // Error'd out somewhere in initialization.
         receiver_finish();
         return;
     }
 
+    // Main state machine loop.
     while(receiver_current_state != Finished) {
         switch(receiver_current_state) {
-            case(Wait_Connection):
+            case Wait_Connection:
                 receiver_action_Wait_Connection();
                 break;
-            case(Wait_for_Packet):
+            case Wait_for_Packet:
                 receiver_action_Wait_for_Packet();
                 break;
-            case(Wait_for_Pipeline):
+            case Wait_for_Pipeline:
                 receiver_action_Wait_for_Pipeline();
                 break;
-            case(Send_Fin_Ack):
+            case Send_Fin_Ack:
                 receiver_action_Send_Fin_Ack();
                 break;
-            case(Wait_inCase):
+            case Wait_inCase:
                 receiver_action_Wait_inCase();
                 break;
         }
     }
+
+    // Clean up resources and exit once finished.
     receiver_finish();
 }
+
 
 /**
  * @brief Initializes the receiver with the specified UDP port, destination file, and write rate.
@@ -194,19 +200,37 @@ int setup_socket(unsigned short int myUDPport) {
     return 1;
 }
 
+/**
+ * @brief Sets up the file for writing received data.
+ * 
+ * This function opens the specified file for writing. If the file cannot be opened,
+ * an error message is displayed, and the function returns 0. On successful opening,
+ * the file pointer is stored in a global variable for later use.
+ *
+ * @param destinationFile The path to the file where the received data will be written.
+ * @return Returns 1 if the file is successfully opened, 0 otherwise.
+ */
 int setup_file(char* destinationFile)
 {
-    /* Open file for writing.  */
+    // Open file for writing
     FILE *filePointer;
     filePointer = fopen(destinationFile, "wb+");
 
     if (filePointer == NULL) {
-        perror("Error opening file.");
+        perror("Error opening file.\n");
         return 0;
     }
     receiver_file = filePointer;
     return 1;
 }
+
+/**
+ * @brief Initializes the receiver's window for packet processing.
+ * 
+ * This function sets up the initial state for the receiver's window, including the 
+ * sequence number of the next needed packet and the anticipated range of packet sequence 
+ * numbers.
+ */
 void setup_recv_window(void)
 {
     next_needed_seq_num = 0;
@@ -216,48 +240,81 @@ void setup_recv_window(void)
     received[1] = anticipate_next[0] - 1;
 }
 
-
+/**
+ * @brief Cleans up resources used by the receiver.
+ * 
+ * This function frees the allocated buffer for received bytes, closes the open file (if any),
+ * and closes the socket. It is used to clean up resources before the receiver shuts down.
+ */
 void receiver_finish(void) {
-    
-    // free this if it exists
-    if (buffered_bytes != NULL)
-    {
+    // Free the buffer if it exists
+    if (buffered_bytes != NULL) {
         free(buffered_bytes);
     }
-    // Close the file.
+
+    // Close the file if it's open
     if (receiver_file != NULL) {
         fclose(receiver_file);
         receiver_file = NULL;
     }
 
-    // Close the socket
+    // Close the socket if it's open
     if (receiver_socket >= 0) {
         close(receiver_socket);
     }
 }
 
-/*Checks if incoming packet is valid SYNC packet. */
+/**
+ * @brief Checks if the incoming packet is a valid SYNC packet.
+ * 
+ * This function checks the management_byte in the packet header to determine
+ * if the SYNC bit (upper-most bit) is set, indicating a SYNC packet.
+ *
+ * @param receive_buffer Pointer to the received protocol packet.
+ * @return Returns 1 if it's a SYNC packet, 0 otherwise.
+ */
 int is_SYNC(struct protocol_Packet *receive_buffer) {
-    
     uint8_t SYNC_bit = receive_buffer->header.management_byte & 0x80; // SYNC is upper-most bit.
     return SYNC_bit == 0x80;
 }
 
-/* Checks if incoming packet is data packet */
-int is_data(struct protocol_Packet *receive_buffer) 
-{
+/**
+ * @brief Checks if the incoming packet is a data packet.
+ * 
+ * This function checks if the management_byte in the packet header is zero,
+ * indicating a data packet.
+ *
+ * @param receive_buffer Pointer to the received protocol packet.
+ * @return Returns 1 if it's a data packet, 0 otherwise.
+ */
+int is_data(struct protocol_Packet *receive_buffer) {
     return receive_buffer->header.management_byte == 0;
 }
 
-/* Checks if incoming packet is valid FIN packet. */
+/**
+ * @brief Checks if the incoming packet is a valid FIN packet.
+ * 
+ * This function checks the management_byte in the packet header to determine
+ * if the FIN bit (second from the right) is set, indicating a FIN packet.
+ *
+ * @param receive_buffer Pointer to the received protocol packet.
+ * @return Returns 1 if it's a FIN packet, 0 otherwise.
+ */
 int is_FIN(struct protocol_Packet *receive_buffer) {
-    uint8_t FIN_bit = receive_buffer->header.management_byte & 0x2; // SYNC is upper-most bit.
+    uint8_t FIN_bit = receive_buffer->header.management_byte & 0x2; // FIN bit is second from the right.
     return FIN_bit == 0x2;
 }
 
-
-int is_duplicate(uint32_t seq_num) 
-{
+/**
+ * @brief Checks if the incoming sequence number is a duplicate.
+ *
+ * Determines whether the specified sequence number has already been received.
+ * This is used to identify and handle duplicate packets.
+ *
+ * @param seq_num The sequence number to check.
+ * @return Returns 1 if the sequence number is a duplicate, 0 otherwise.
+ */
+int is_duplicate(uint32_t seq_num) {
     if (received[0] < received[1])
     {
         return ((seq_num >= received[0]) && (seq_num <= received[1]));
@@ -273,6 +330,12 @@ int is_duplicate(uint32_t seq_num)
     return 0;
 }
 
+/**
+ * @brief Handles the Wait Connection state of the receiver.
+ *
+ * Waits for a SYNC packet from the sender to establish a connection.
+ * Upon receiving a SYNC packet, sends a SYNC ACK back to the sender.
+ */
 void receiver_action_Wait_Connection(void) 
 {
     char buffer[BUFFER_SIZE];
@@ -288,7 +351,7 @@ void receiver_action_Wait_Connection(void)
             
             // Now connect to the sender, as we only want to communicate with this sender.
             if (connect(receiver_socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
-                //perror("Error connecting to sender.");
+                perror("Error connecting to sender.\n");
             }
                 // Send SYNC_ACK back to sender to complete handshaking.
             struct protocol_Header SYNC_ACK_packet;
@@ -298,41 +361,44 @@ void receiver_action_Wait_Connection(void)
             // Everything else should already be zero'd...
 
             if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
-                perror("Error with sending SYNC_ACK.");
-                // FIXME: Handle this?
+                perror("Error with sending SYNC_ACK.\n");
             }
             receiver_current_state = Wait_for_Packet;
         }
     } else if ((packet_size < 0)  && (errno != EAGAIN && errno != EWOULDBLOCK)) {
-        perror("Error with recvfrom.");
+        perror("Error with recvfrom.\n");
         receiver_current_state = Finished;
     }
     // Otherwise, no data received. Stay in Wait_Connection.
 }
 
+/**
+ * @brief Handles the Wait for Packet state of the receiver.
+ *
+ * Waits for data packets from the sender. Processes received packets,
+ * checks for duplicates, and handles SYNC and FIN packets.
+ */
 void receiver_action_Wait_for_Packet(void) {
     // Check for any incoming packets...
     struct protocol_Packet receive_buffer;
-    ssize_t bytes_received = recv(receiver_socket, &receive_buffer, 
-                                    sizeof(struct protocol_Packet), MSG_DONTWAIT);
-
+    ssize_t bytes_received = recv(receiver_socket, &receive_buffer, sizeof(struct protocol_Packet), MSG_DONTWAIT);
 
     if (bytes_received > 0) 
     {
         // Handle checking if valid seq packet, duplicate, finish, etc.
         if (is_SYNC(&receive_buffer)) 
         {
-        // Send SYNC_ACK back to sender to complete handshaking.
-        struct protocol_Header SYNC_ACK_packet;
-        memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
-        
-        SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
-        // Everything else should already be zero'd...
+            // Send SYNC_ACK back to sender to complete handshaking.
+            struct protocol_Header SYNC_ACK_packet;
+            memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
+            
+            SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
+            // Everything else should already be zero'd...
 
-        if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
-            perror("Error with sending SYNC_ACK.");
-            receiver_current_state = Finished;
-        }
+            if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
+                perror("Error with sending SYNC_ACK.\n");
+                receiver_current_state = Finished;
+            }
         }
         else if (is_data(&receive_buffer)) 
         {
@@ -356,7 +422,6 @@ void receiver_action_Wait_for_Packet(void) {
             } 
             else {      
                 // ADD it to the buffered_bytes
-
                 last_valid_buffer_index = -1;  
                 first_valid_buffer_index = MAX_WINDOW_SIZE;
 
@@ -379,11 +444,12 @@ void receiver_action_Wait_for_Packet(void) {
     // Otherwise, no data received. Stay in Wait_for_Packet.
 }
 
-
-
-
-
-// TODO
+/**
+ * @brief Handles the Wait for Pipeline state of the receiver.
+ *
+ * Waits for additional packets in the pipeline. Processes received data packets,
+ * checks for duplicates, and handles writing data to the file after a short timer.
+ */
 void receiver_action_Wait_for_Pipeline(void) 
 {
     // Check for any incoming FINs (just in-case)...
@@ -439,22 +505,28 @@ void receiver_action_Wait_for_Pipeline(void)
         receiver_current_state = Wait_for_Packet;
     }
 }
-void add_data_to_buffer(struct protocol_Packet *receive_buffer)
-{
 
+
+/**
+ * @brief Adds data from a received packet to the buffer.
+ * 
+ * This function processes the received packet and adds its data to the buffer. 
+ * It calculates the buffer index based on the sequence number and stores the data 
+ * accordingly. It also updates the indices for the first and last valid buffer positions.
+ *
+ * @param receive_buffer Pointer to the received protocol packet.
+ */
+void add_data_to_buffer(struct protocol_Packet *receive_buffer) {
     uint32_t buffer_index;
     uint32_t local_seq_num = receive_buffer->header.seq_ack_num;
     uint16_t bytes_data_in_packet = receive_buffer->header.bytes_of_data;
     buffer_index = local_seq_num - next_needed_seq_num;
-    if (buffer_index == 0) 
-    {
+    if (buffer_index == 0) {
         first_valid_buffer_index = 0;
     }
 
-    for(int i = 0; i < bytes_data_in_packet; i++) 
-    {
+    for (int i = 0; i < bytes_data_in_packet; i++) {
         buffer_index = local_seq_num - next_needed_seq_num;
-        
         buffered_bytes[buffer_index] = receive_buffer->data[i];
         local_seq_num++;
     }
@@ -462,19 +534,23 @@ void add_data_to_buffer(struct protocol_Packet *receive_buffer)
     {
         last_valid_buffer_index = buffer_index;       
     }
-            
 }
 
 
-// Send FIN_ACK back to sender.
+/**
+ * @brief Sends a FIN_ACK packet to the sender.
+ * 
+ * This function constructs a FIN_ACK packet and sends it to the sender. It is called
+ * when a FIN packet is received, indicating the end of data transmission. The function
+ * also starts a long timer and sets the receiver's state to Wait_inCase.
+ */
 void receiver_action_Send_Fin_Ack(void) {
     // Construct FIN_ACK packet.
     struct protocol_Header FIN_ACK_packet;
     memset(&FIN_ACK_packet, 0, sizeof(FIN_ACK_packet));
-
     FIN_ACK_packet.management_byte = 0x1; // FIN_ACK bit
     // Everything else should already be zero'd...
-    
+
     if (send(receiver_socket, &FIN_ACK_packet, sizeof(FIN_ACK_packet), 0) < 0) {
         perror("Error with sending FIN_ACK.");
         receiver_current_state = Finished;
@@ -485,7 +561,12 @@ void receiver_action_Send_Fin_Ack(void) {
     receiver_current_state = Wait_inCase;
 }
 
-// Wait for a long time just in-case we get another FIN packet.
+/**
+ * @brief Waits for a long duration in case another FIN packet is received.
+ * 
+ * This function waits for a specified long duration to handle any additional FIN packets 
+ * that may arrive. It ensures that the receiver properly finalizes the connection.
+ */
 void receiver_action_Wait_inCase(void) {
     // Check for any incoming FINs (just in-case)...
     char buffer[BUFFER_SIZE];
@@ -493,8 +574,8 @@ void receiver_action_Wait_inCase(void) {
 
     ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), MSG_DONTWAIT);
 
-    if (packet_size > 0 && is_FIN((struct protocol_Packet *)buffer)) 
-    {   
+    if (packet_size > 0 && is_FIN((struct protocol_Packet *)buffer))
+    {
         receiver_current_state = Send_Fin_Ack;
     } 
     else if (time_elapsed_ms > LONG_TIMER_MS) 
@@ -508,12 +589,17 @@ void receiver_action_Wait_inCase(void) {
     }
 }
 
+/**
+ * @brief Main function for the receiver application.
+ * 
+ * This function parses command line arguments to set up the UDP port and destination file.
+ * It then calls the rrecv function to start the receiver process.
+ *
+ * @param argc Number of command-line arguments.
+ * @param argv Array of command-line arguments.
+ * @return Returns the exit status.
+ */
 int main(int argc, char** argv) {
-    // This is a skeleton of a main function.
-    // You should implement this function more completely
-    // so that one can invoke the file transfer from the
-    // command line.
-
     unsigned short int udpPort;
     char* filename = NULL;
     unsigned long long int writeRate = 0;
