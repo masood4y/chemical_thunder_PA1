@@ -33,6 +33,7 @@ static uint32_t current_window_size;
 static double RTT_in_ms;
 static double timeoutInterval_in_ms;
 static double devRTT;
+static uint8_t timer_valid;
 
 
 static clock_t start, end;
@@ -65,6 +66,7 @@ int open_file(char* filename, unsigned long long int bytesToTransfer);
 int setup_socket(char* hostname, unsigned short int hostUDPport);
 void setup_cwindow(void);
 void updateRTT(double sampleRTT);
+void handle_timeout(void);
 
 
 //TODO: close file, close socket
@@ -239,9 +241,16 @@ void updateRTT(double sampleRTT) {
 
     // Update timeout interval using this newly estimated RTT and safety margin.
     timeoutInterval_in_ms = RTT_in_ms + 4 * devRTT;
+    
+    timer_valid = 0;
 }
 
-
+void handle_timeout(void) {
+    // Exponential backoff, double the timeout interval
+     timeoutInterval_in_ms *= 2;
+     // We could also double the deviation, but this might be more than we need for now
+     // devRTT *= 2;
+}
 
 
 /* Connection Setup */
@@ -316,6 +325,7 @@ void init_rtt(void)
     RTT_in_ms = cpu_time_used_in_ms * 6;
     devRTT = RTT_in_ms /2;
     timeoutInterval_in_ms = RTT_in_ms + (4 * devRTT);
+    timer_valid = 0;
     printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
 }
 
@@ -326,7 +336,6 @@ void sender_action_Send_N_Packets(void)
     uint32_t sending_index;
     struct protocol_Packet packet_being_sent;
     sending_index = in_Flight[0];
-    int first_packet = 1;
     
     while (sending_index_in_range(sending_index))
     {
@@ -359,10 +368,10 @@ void sender_action_Send_N_Packets(void)
         if (bytes_sent == -1){
             // handle
         }
-        if (first_packet)
+        if (!timer_valid)
         {
             start = clock();
-            first_packet = 0;
+            timer_valid = 1;
         }
     }
     sender_current_state = Wait_for_Ack;
@@ -494,7 +503,7 @@ void sender_action_Wait_for_Ack(void)
         {
             printf("sender timed out\n");
             quarter_cwindow();
-            timeoutInterval_in_ms *= 2;
+            handle_timeout();
             
             fseek(file_pointer, file_offset_for_sending, SEEK_SET);
             sender_current_state = Send_N_Packets;
