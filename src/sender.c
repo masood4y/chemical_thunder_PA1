@@ -341,7 +341,7 @@ void sender_action_Send_N_Packets(void)
     {
         unsigned int i;
         unsigned long offset;
-        offset = ftell(file_pointer);
+        //offset = ftell(file_pointer);
         //printf("File off set before packet is: %d\n", offset);
         memset(&packet_being_sent, 0, sizeof(packet_being_sent));
         packet_being_sent.header.seq_ack_num = sending_index;
@@ -464,7 +464,7 @@ void sender_action_Wait_for_Ack(void)
                 // update file offset for sending
                 file_offset_for_sending = file_offset_for_sending + (gained);
                 fseek(file_pointer, file_offset_for_sending, SEEK_SET);
-                unsigned long offset = ftell(file_pointer);
+                //unsigned long offset = ftell(file_pointer);
                 //printf("File offset now set to: %ld\n", offset);
                 
                 //TODO: update current window size based on bytes left, AMID, theoretical max
