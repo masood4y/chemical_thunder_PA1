@@ -76,9 +76,6 @@ void add_data_to_buffer(struct protocol_Packet *receive_buffer);
 /* Connection Teardown */
 void receiver_action_Send_Fin_Ack(void);
 void receiver_action_Wait_inCase(void);
-
-/* Helper function for sorting buffered packets */
-//int compare_packets(const void *a, const void *b);
 /* ================ Function Declarations END ================ */
 
 
@@ -114,72 +111,88 @@ void rrecv(unsigned short int myUDPport,
     receiver_finish();
 }
 
-// FIXME: IF errors occur, should destroy/close everything.
+/**
+ * @brief Initializes the receiver with the specified UDP port, destination file, and write rate.
+ *
+ * Sets up a UDP socket, prepares the destination file for writing, initializes
+ * the receiver's window and state, and allocates memory for buffering incoming data.
+ *
+ * @param myUDPport The UDP port to bind the receiver socket to.
+ * @param destinationFile The path to the file where the received data will be written.
+ * @param writeRate The rate at which data will be written to the file.
+ * @return Returns 1 on successful initialization, 0 on failure.
+ */
 int receiver_init(unsigned short int myUDPport, 
-            char* destinationFile, 
-            unsigned long long int writeRate) {
-    /* Set up UDP Socket */
-    if (!setup_socket(myUDPport)) 
-    {
+                  char* destinationFile, 
+                  unsigned long long int writeRate) {
+    // Set up UDP Socket
+    if (!setup_socket(myUDPport)) {
         return 0;
     }
 
-    /* Setup File for Writing */
-    if (!setup_file(destinationFile))
-    {
+    // Setup File for Writing
+    if (!setup_file(destinationFile)) {
         return 0;
     }
     receiver_write_rate = writeRate;
 
+    // Allocate memory for buffered bytes
     buffered_bytes = malloc(MAX_WINDOW_SIZE);
-    if (buffered_bytes == NULL) 
-    {
-        perror("Failed to malloc for buffered bytes.");
+    if (buffered_bytes == NULL) {
+        perror("Failed to malloc for buffered bytes.\n");
         return 0;
-            // FIXME: Should error out.
     }
-    // fill buffered bytes with EOFs to signify theyre empty
-    for (int i = 0; i < MAX_WINDOW_SIZE; i++)
-    {
+    // Initialize buffered bytes
+    for (int i = 0; i < MAX_WINDOW_SIZE; i++) {
         buffered_bytes[i] = EOF;
     }
     
+    // Setup receive window
     setup_recv_window();
         
+    // Set initial receiver state
     receiver_current_state = Wait_Connection;
     return 1;
 }
 
-int setup_socket(unsigned short int myUDPport)
-{
-
-    /* Create the UDP socket. */
+/**
+ * @brief Sets up the UDP socket for the receiver.
+ *
+ * Creates a UDP socket, sets it to non-blocking mode, and binds it to the specified
+ * UDP port. Prepares the socket for receiving data on the given port.
+ *
+ * @param myUDPport The UDP port number to bind the socket to.
+ * @return Returns 1 if the socket is set up successfully, 0 otherwise.
+ */
+int setup_socket(unsigned short int myUDPport) {
+    // Create the UDP socket
     receiver_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (receiver_socket < 0) {
-        perror("Error with creating socket.");
+        perror("Error with creating socket.\n");
         return 0;
     }
     
-    /* Set the socket as non-blocking. */
+    // Set the socket as non-blocking
     if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETFL, 0) | O_NONBLOCK)) {
-        perror("Error with setting socket flags.");
+        perror("Error with setting socket flags.\n");
         return 0;
     }
 
-    /* Set socket address for receiving.*/
+    // Set socket address for receiving
     struct sockaddr_in receiver_socket_addr;
     memset(&receiver_socket_addr, 0, sizeof(struct sockaddr_in));
     receiver_socket_addr.sin_family = AF_INET;
     receiver_socket_addr.sin_port = htons(myUDPport);
-    receiver_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY); // no-specific IP-address
+    receiver_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY); // Accept connections on any IP address.
 
-    /* Bind the socket to the address and port. */
+    // Bind the socket to the address and port
     if (bind(receiver_socket, (struct sockaddr *)&receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
-        perror("Error binding to the port.");
+        perror("Error binding to the port.\n");
         return 0;
     }
     return 1;
 }
+
 int setup_file(char* destinationFile)
 {
     /* Open file for writing.  */
