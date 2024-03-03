@@ -446,7 +446,8 @@ void add_data_to_buffer(struct protocol_Packet *receive_buffer)
     uint32_t local_seq_num = receive_buffer->header.seq_ack_num;
     uint16_t bytes_data_in_packet = receive_buffer->header.bytes_of_data;
     buffer_index = local_seq_num - next_needed_seq_num;
-    printf("received this string %s\n", receive_buffer->data);
+    //printf("first buffer index of packet is %d\n", buffer_index);
+    //printf("received this string\n%s\n", receive_buffer->data);
     if (buffer_index == 0) 
     {
         first_valid_buffer_index = 0;
@@ -463,7 +464,8 @@ void add_data_to_buffer(struct protocol_Packet *receive_buffer)
     if (buffer_index >= last_valid_buffer_index) 
     {
         last_valid_buffer_index = buffer_index;       
-    }           
+    }
+    //printf("last buffer index of packet is %d\n", buffer_index);           
 }
 
 
