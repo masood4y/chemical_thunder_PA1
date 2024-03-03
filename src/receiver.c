@@ -14,7 +14,7 @@
 #include "our_protocol.h"
 #include <fcntl.h>
 
-#define LONG_TIMER_MS 2500 // 2.5s
+#define LONG_TIMER_MS 5000 // 2.5s
 #define SHORT_TIMER_MS 3
 #define BUFFER_SIZE (sizeof(struct protocol_Packet) + 16) // FIXME: this is arbitrary for now...
 #define MAX_PACKETS_IN_WINDOW (MAX_WINDOW_SIZE / PACKET_SIZE)
