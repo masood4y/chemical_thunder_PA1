@@ -451,7 +451,7 @@ void sender_action_Wait_for_Ack(void)
                 fseek(file_pointer, file_offset_for_sending, SEEK_SET);
                 
                 //TODO: update current window size based on bytes left, AMID, theoretical max
-                void increment_cwindow(void);
+                increment_cwindow();
 
                 sender_current_state = Send_N_Packets;
                 break;
@@ -463,7 +463,7 @@ void sender_action_Wait_for_Ack(void)
                 duplicate_ack_count++;
                 if (duplicate_ack_count >= 3)
                 {
-                    quarter_cwindow();
+                    half_cwindow();
                 }
             }
         } 
