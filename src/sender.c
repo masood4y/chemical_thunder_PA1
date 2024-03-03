@@ -313,7 +313,7 @@ int is_Sync_Ack(struct protocol_Header* receive_buffer)
 }
 void init_rtt(void) 
 {
-    RTT_in_ms = cpu_time_used_in_ms;
+    RTT_in_ms = cpu_time_used_in_ms * 3;
     devRTT = RTT_in_ms /2;
     timeoutInterval_in_ms = RTT_in_ms + (4 * devRTT);
     printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
