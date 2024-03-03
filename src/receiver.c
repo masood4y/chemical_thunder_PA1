@@ -28,8 +28,8 @@ static time_t timer_start;
 
 
 static char *buffered_bytes;
-static uint32_t last_valid_buffer_index;  
-static uint32_t first_valid_buffer_index = 1;
+static int64_t last_valid_buffer_index;  
+static int64_t first_valid_buffer_index;
 static uint32_t next_needed_seq_num;
 static uint32_t received[2];
 static uint32_t anticipate_next[2];
@@ -52,14 +52,17 @@ enum receiver_state
 /* ================ Function Declarations Start ================ */
 /* Initialization */
 int receiver_init(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate);
+int setup_socket(unsigned short int myUDPport);
+int setup_file(char* destinationFile);
+void setup_recv_window(void);
 
 /* Closing file, socket, etc. */
 void receiver_finish(void);
 
 /* Checking packets */
-int is_SYNC(const char* packet);
-int is_data(const char* packet);
-int is_FIN(const char* packet);
+int is_SYNC(struct protocol_Packet *receive_buffer);
+int is_data(struct protocol_Packet *receive_buffer);
+int is_FIN(struct protocol_Packet *receive_buffer);
 int is_duplicate(uint32_t seq_num);
 
 /* Connection Setup */
@@ -68,6 +71,7 @@ void receiver_action_Wait_Connection(void);
 /* Receive Data*/
 void receiver_action_Wait_for_Packet(void);
 void receiver_action_Wait_for_Pipeline(void);
+void add_data_to_buffer(struct protocol_Packet *receive_buffer);
 
 /* Connection Teardown */
 void receiver_action_Send_Fin_Ack(void);
@@ -107,7 +111,6 @@ void rrecv(unsigned short int myUDPport,
                 break;
         }
     }
-
     receiver_finish();
 }
 
@@ -115,33 +118,71 @@ void rrecv(unsigned short int myUDPport,
 int receiver_init(unsigned short int myUDPport, 
             char* destinationFile, 
             unsigned long long int writeRate) {
-    // Create the UDP socket.
+    /* Set up UDP Socket */
+    if (!setup_socket(myUDPport)) 
+    {
+        return 0;
+    }
+
+    /* Setup File for Writing */
+    if (!setup_file(destinationFile))
+    {
+        return 0;
+    }
+    receiver_write_rate = writeRate;
+
+    buffered_bytes = malloc(MAX_WINDOW_SIZE);
+    if (buffered_bytes == NULL) 
+    {
+        perror("Failed to malloc for buffered bytes.");
+        return 0;
+            // FIXME: Should error out.
+    }
+    // fill buffered bytes with EOFs to signify theyre empty
+    for (int i = 0; i < MAX_WINDOW_SIZE; i++)
+    {
+        buffered_bytes[i] = EOF;
+    }
+    
+    setup_recv_window();
+        
+    receiver_current_state = Wait_Connection;
+    return 1;
+}
+
+int setup_socket(unsigned short int myUDPport)
+{
+
+    /* Create the UDP socket. */
     receiver_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (receiver_socket < 0) {
         perror("Error with creating socket.");
         return 0;
     }
     
-    // Set the socket as non-blocking.
+    /* Set the socket as non-blocking. */
     if (fcntl(receiver_socket, F_SETFL, fcntl(receiver_socket, F_GETFL, 0) | O_NONBLOCK)) {
         perror("Error with setting socket flags.");
         return 0;
     }
 
-    // Set socket address for receiving.
+    /* Set socket address for receiving.*/
     struct sockaddr_in receiver_socket_addr;
     memset(&receiver_socket_addr, 0, sizeof(struct sockaddr_in));
     receiver_socket_addr.sin_family = AF_INET;
     receiver_socket_addr.sin_port = htons(myUDPport);
     receiver_socket_addr.sin_addr.s_addr = htonl(INADDR_ANY); // no-specific IP-address
 
-    // Bind the socket to the address and port.
+    /* Bind the socket to the address and port. */
     if (bind(receiver_socket, (struct sockaddr *)&receiver_socket_addr, sizeof(receiver_socket_addr)) < 0) {
         perror("Error binding to the port.");
         return 0;
     }
-
-    // Open file for writing.
+    return 1;
+}
+int setup_file(char* destinationFile)
+{
+    /* Open file for writing.  */
     FILE *filePointer;
     filePointer = fopen(destinationFile, "wb+");
     printf("opening file\n");
@@ -150,35 +191,18 @@ int receiver_init(unsigned short int myUDPport,
         perror("Error opening file.");
         return 0;
     }
-
-    // Set static variables.
     receiver_file = filePointer;
-    receiver_write_rate = writeRate;
-
-    buffered_bytes = malloc(MAX_WINDOW_SIZE);
-    if (buffered_bytes == NULL) 
-    {
-        perror("Failed to malloc for buffered bytes.");
-            // FIXME: Should error out.
-    }
-    // fill buffered bytes with EOFs to signify theyre empty
-    for (int i = 0; i < MAX_WINDOW_SIZE; i++)
-    {
-        buffered_bytes[i] = EOF;
-    }
-
-    
-    // Set default values.
-    receiver_current_state = Wait_Connection;
-    
+    return 1;
+}
+void setup_recv_window(void)
+{
     next_needed_seq_num = 0;
     anticipate_next[0] = next_needed_seq_num;
     anticipate_next[1] = anticipate_next[0] + (MAX_WINDOW_SIZE - 1);
     received[0] = anticipate_next[1] + 1;
     received[1] = anticipate_next[0] - 1;
-    
-    return 1;
 }
+
 
 // FIXME: Potentially more?
 void receiver_finish(void) {
@@ -201,22 +225,21 @@ void receiver_finish(void) {
 }
 
 // Checks if incoming packet is valid SYNC packet.
-int is_SYNC(const char* packet) {
-    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
-    uint8_t SYNC_bit = header.management_byte & 0x80; // SYNC is upper-most bit.
+int is_SYNC(struct protocol_Packet *receive_buffer) {
+    
+    uint8_t SYNC_bit = receive_buffer->header.management_byte & 0x80; // SYNC is upper-most bit.
     return SYNC_bit == 0x80;
 }
 
 // Checks if incoming packet is data packet (management byte is required to be zero for data).
-int is_data(const char* packet) {
-    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
-    return header.management_byte == 0;
+int is_data(struct protocol_Packet *receive_buffer) 
+{
+    return receive_buffer->header.management_byte == 0;
 }
 
 // Checks if incoming packet is valid FIN packet.
-int is_FIN(const char* packet) {
-    struct protocol_Header header = ((struct protocol_Packet *)packet)->header;
-    uint8_t FIN_bit = header.management_byte & 0x2; // FIN is second lower-most bit.
+int is_FIN(struct protocol_Packet *receive_buffer) {
+    uint8_t FIN_bit = receive_buffer->header.management_byte & 0x2; // SYNC is upper-most bit.
     return FIN_bit == 0x2;
 }
 
@@ -248,27 +271,27 @@ void receiver_action_Wait_Connection(void)
 
     if (packet_size > 0) {
         // Check if was a SYNC packet.
-        if (is_SYNC(buffer)) {
+        if (is_SYNC((struct protocol_Packet *)buffer)) {
             printf("Connecting to Sender\n");
             // Now connect to the sender, as we only want to communicate with this sender.
             if (connect(receiver_socket, (struct sockaddr *)&sender_addr, addr_size) < 0) {
                 perror("Error connecting to sender.");
                 // FIXME: handle this?
             }
+            ///////////// SEND BACK SYNC ACK FUNC
+                // Send SYNC_ACK back to sender to complete handshaking.
+                struct protocol_Header SYNC_ACK_packet;
+                memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
+                
+                SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
+                // Everything else should already be zero'd...
 
-            // Send SYNC_ACK back to sender to complete handshaking.
-            struct protocol_Header SYNC_ACK_packet;
-            memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
-            
-            SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
-            // Everything else should already be zero'd...
-
-            if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
-                perror("Error with sending SYNC_ACK.");
-                // FIXME: Handle this?
-            }
-            printf("sending sync ack\n");
-            
+                if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
+                    perror("Error with sending SYNC_ACK.");
+                    // FIXME: Handle this?
+                }
+                printf("sending sync ack\n");
+            //////////// SEND BACK SYNC ACK FUNC
             receiver_current_state = Wait_for_Packet;
         }
     } else if ((packet_size < 0)  && (errno != EAGAIN && errno != EWOULDBLOCK)) {
@@ -280,32 +303,36 @@ void receiver_action_Wait_Connection(void)
 
 void receiver_action_Wait_for_Packet(void) {
     // Check for any incoming packets...
-    char buffer[BUFFER_SIZE];
-    ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), 0);
+    struct protocol_Packet receive_buffer;
+    ssize_t bytes_received = recv(receiver_socket, &receive_buffer, 
+                                    sizeof(struct protocol_Packet), MSG_DONTWAIT);
 
-    if (packet_size > 0) 
+
+    if (bytes_received > 0) 
     {
         // Handle checking if valid seq packet, duplicate, finish, etc.
-        if (is_SYNC(buffer)) 
+        if (is_SYNC(&receive_buffer)) 
         {
-            printf("received another sync\n");
-            // Send SYNC_ACK back to sender to complete handshaking.
-            struct protocol_Header SYNC_ACK_packet;
-            memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
-            
-            SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
-            // Everything else should already be zero'd...
+            ///////////// SEND BACK SYNC ACK FUNC
+                printf("received another sync\n");
+                // Send SYNC_ACK back to sender to complete handshaking.
+                struct protocol_Header SYNC_ACK_packet;
+                memset(&SYNC_ACK_packet, 0, sizeof(SYNC_ACK_packet));
+                
+                SYNC_ACK_packet.management_byte = 0x40; // set second-highest bit for SYNC ACK.
+                // Everything else should already be zero'd...
 
-            if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
-                perror("Error with sending SYNC_ACK.");
-                // FIXME: Handle this?
-            }
+                if (send(receiver_socket, &SYNC_ACK_packet, sizeof(SYNC_ACK_packet), 0) < 0) {
+                    perror("Error with sending SYNC_ACK.");
+                    // FIXME: Handle this?
+                }
+            ///////////// SEND BACK SYNC ACK FUNC
         }
-        else if (is_data(buffer)) 
+        else if (is_data(&receive_buffer)) 
         {
             // Check if valid sequence packet or is a duplicate.
-            uint32_t sequence_num_received = ((struct protocol_Packet *)&buffer)->header.seq_ack_num;
-            uint32_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
+            uint32_t sequence_num_received = receive_buffer.header.seq_ack_num;
+            uint32_t bytes_data_in_packet = receive_buffer.header.bytes_of_data;
             printf("received Packet %d\n", sequence_num_received);
 
             if (is_duplicate(sequence_num_received))
@@ -324,42 +351,24 @@ void receiver_action_Wait_for_Packet(void) {
                 }
             } 
             else {      
-                last_valid_buffer_index = 0;  
-                first_valid_buffer_index = 1;
-                uint32_t buffer_index;
-                uint32_t local_seq_num = sequence_num_received;
-                buffer_index = local_seq_num - next_needed_seq_num;
-                printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
-                if (buffer_index == 0) 
-                {
-                    first_valid_buffer_index = 0;
-                }
+                // ADD it to the buffered_bytes
 
-                 // buffered_bytes_index = seqnum_byte - next_anticipated_byte
-                for(int i = 0; i < bytes_data_in_packet; i++) 
-                {
-                    buffer_index = local_seq_num - next_needed_seq_num;
-                    
-                    buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
-                    local_seq_num++;
-                }
-                if (buffer_index >= last_valid_buffer_index) 
-                {
-                    last_valid_buffer_index = buffer_index;       
-                }           
+                last_valid_buffer_index = -1;  
+                first_valid_buffer_index = MAX_WINDOW_SIZE;
 
+                add_data_to_buffer(&receive_buffer);
                 // Start small countdown-timer and now wait for pipeline.
                 timer_start = clock();
                 receiver_current_state = Wait_for_Pipeline;
             }
         } 
-        else if (is_FIN(buffer)) 
+        else if (is_FIN(&receive_buffer)) 
         {
             receiver_current_state = Send_Fin_Ack;
             printf("received Fin\n");
         }
     } 
-    else if ((packet_size == -1) && (errno != EAGAIN && errno != EWOULDBLOCK)) 
+    else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK)) 
     {
         perror("Error with recv.");
         // FIXME: handle this?
@@ -375,39 +384,20 @@ void receiver_action_Wait_for_Packet(void) {
 void receiver_action_Wait_for_Pipeline(void) 
 {
     // Check for any incoming FINs (just in-case)...
-    char buffer[BUFFER_SIZE];
-    ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), MSG_DONTWAIT);
-
-    if (packet_size > 0 && is_data(buffer)) 
+    struct protocol_Packet receive_buffer;
+    ssize_t bytes_received = recv(receiver_socket, &receive_buffer, 
+                                    sizeof(struct protocol_Packet), MSG_DONTWAIT);
+    
+    if (bytes_received > 0 && is_data(&receive_buffer)) 
     {
-        uint32_t sequence_num_received = ((struct protocol_Packet *)buffer)->header.seq_ack_num;
-        uint32_t bytes_data_in_packet = ((struct protocol_Packet *)&buffer)->header.bytes_of_data;
+        uint32_t sequence_num_received = receive_buffer.header.seq_ack_num;
         printf("Received packet %d\n", sequence_num_received);
         if (!is_duplicate(sequence_num_received))
-        {   
-
-            uint32_t buffer_index;
-            uint32_t local_seq_num = sequence_num_received;
-            buffer_index = local_seq_num - next_needed_seq_num;
-            printf("received this string %s\n", ((struct protocol_Packet *)buffer)->data);
-            if (buffer_index == 0) 
-            {
-                first_valid_buffer_index = 0;
-            }
-
-                // buffered_bytes_index = seqnum_byte - next_anticipated_byte
-            for(int i = 0; i < bytes_data_in_packet; i++) {
-                buffer_index = local_seq_num - next_needed_seq_num;
-                            
-                buffered_bytes[buffer_index] = ((struct protocol_Packet *)buffer)->data[i];
-                local_seq_num++;
-            }
-            if (buffer_index >= last_valid_buffer_index) {
-                last_valid_buffer_index = buffer_index;       
-            }         
+        {       
+            add_data_to_buffer(&receive_buffer);
         }            
     }
-    else if ((packet_size == -1) && (errno != EAGAIN && errno != EWOULDBLOCK)) 
+    else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK)) 
     {
         perror("Error with recv while waiting for pipeline.");
         // FIXME: handle this?
@@ -418,8 +408,9 @@ void receiver_action_Wait_for_Pipeline(void)
     if (time_elapsed_ms > SHORT_TIMER_MS) 
     {
         printf("Pipeline timer expired\n");
-        if (first_valid_buffer_index == 0){
-            for (int i = 0; i <= last_valid_buffer_index; i++)
+        if (first_valid_buffer_index == 0)
+        {
+            for (int i = 0; (i <= last_valid_buffer_index && i < MAX_WINDOW_SIZE); i++)
             {   
                 fputc(buffered_bytes[i], receiver_file);
                 next_needed_seq_num++;
@@ -448,6 +439,33 @@ void receiver_action_Wait_for_Pipeline(void)
         receiver_current_state = Wait_for_Packet;
     }
 }
+void add_data_to_buffer(struct protocol_Packet *receive_buffer)
+{
+
+    uint32_t buffer_index;
+    uint32_t local_seq_num = receive_buffer->header.seq_ack_num;
+    uint16_t bytes_data_in_packet = receive_buffer->header.bytes_of_data;
+    buffer_index = local_seq_num - next_needed_seq_num;
+    printf("received this string %s\n", receive_buffer->data);
+    if (buffer_index == 0) 
+    {
+        first_valid_buffer_index = 0;
+    }
+
+    // buffered_bytes_index = seqnum_byte - next_anticipated_byte
+    for(int i = 0; i < bytes_data_in_packet; i++) 
+    {
+        buffer_index = local_seq_num - next_needed_seq_num;
+        
+        buffered_bytes[buffer_index] = receive_buffer->data[i];
+        local_seq_num++;
+    }
+    if (buffer_index >= last_valid_buffer_index) 
+    {
+        last_valid_buffer_index = buffer_index;       
+    }           
+}
+
 
 // Send FIN_ACK back to sender.
 void receiver_action_Send_Fin_Ack(void) {
@@ -477,7 +495,7 @@ void receiver_action_Wait_inCase(void) {
 
     ssize_t packet_size = recv(receiver_socket, buffer, sizeof(buffer), MSG_DONTWAIT);
 
-    if (packet_size > 0 && is_FIN(buffer)) 
+    if (packet_size > 0 && is_FIN((struct protocol_Packet *)buffer)) 
     {   
         printf("received another fin\n");
         receiver_current_state = Send_Fin_Ack;
