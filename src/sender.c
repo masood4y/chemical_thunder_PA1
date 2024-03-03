@@ -150,14 +150,11 @@ int open_file(char* filename, unsigned long long int bytesToTransfer)
     }
     if (bytes_left_to_send == 0) 
     {
-        printf("bytes left to send is 0\n");
         return -1;
     }
     return 0;
 }
 int setup_socket(char* hostname, unsigned short int hostUDPport) {
-
-
 
     struct sockaddr_in receiver_address;
     struct hostent *host;
@@ -168,7 +165,6 @@ int setup_socket(char* hostname, unsigned short int hostUDPport) {
     if (host == NULL) {
         fprintf(stderr, "Error: Could not resolve hostname.\n");
         return -1;
-        //exit(EXIT_FAILURE);
     }
 
     /* Create a UDP socket */
@@ -176,7 +172,6 @@ int setup_socket(char* hostname, unsigned short int hostUDPport) {
     if (sockfd < 0) {
         perror("Error opening socket");
         return -1;
-        //exit(EXIT_FAILURE);
     }
 
     /* Set up the receiver struct */
@@ -184,34 +179,24 @@ int setup_socket(char* hostname, unsigned short int hostUDPport) {
     receiver_address.sin_family = AF_INET;
     receiver_address.sin_port = htons(hostUDPport);
     memcpy(&receiver_address.sin_addr, host->h_addr_list[0], host->h_length);
-    //memcpy(&receiver_address.sin_addr, host->h_addr, host->h_length);
 
     /* Connect other end of socket to the Receiver */ 
     if (connect(sockfd, (struct sockaddr *)&receiver_address, sizeof(receiver_address)) < 0) {
         perror("Error connecting to server");
         close(sockfd);
         return -1;
-        // exit(EXIT_FAILURE);
     }
-
-    //printf("UDP socket connected to %s:%s\n", HOSTNAME, PORT);
 
     /* Set the socket to non-blocking mode for receiving */
     int flags = fcntl(sockfd, F_GETFL, 0);
     if (flags == -1) {
         perror("Error getting socket flags");
         return -1;
-        //close(sockfd);
-        //exit(EXIT_FAILURE);
     }
     if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
         perror("Error setting socket to non-blocking mode");
         return -1;
-        //close(sockfd);
-        //exit(EXIT_FAILURE);
     }
-
-
     return 0;
 }
 
@@ -267,7 +252,8 @@ void sender_action_Start_Connection(void)
 
     if (bytes_sent < 0) {
         perror("Error sending data");
-        //TODO: handle
+        sender_current_state = sender_Done;
+        return;
     }
     
 
@@ -296,16 +282,15 @@ void sender_action_Start_Connection(void)
         else if (bytes_received == 0) 
         {
             printf("Connection closed by peer\n");
-            //TODO: handle
-            //break;
+            sender_current_state = sender_Done;
+            break;
         } 
         /* Check if the error is due to the socket being non-blocking */
         else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
         {
             perror("Error receiving data");
-            //close(sockfd);
-            //exit(EXIT_FAILURE);
-            // TODO: handle
+            sender_current_state = sender_Done;
+            break;
         }
 
         /* Check Timer for timeout */
@@ -326,7 +311,6 @@ void init_rtt(void)
     devRTT = RTT_in_ms /2;
     timeoutInterval_in_ms = RTT_in_ms + (4 * devRTT);
     timer_valid = 0;
-    printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
 }
 
 
@@ -340,9 +324,6 @@ void sender_action_Send_N_Packets(void)
     while (sending_index_in_range(sending_index))
     {
         unsigned int i;
-        //unsigned long offset;
-        //offset = ftell(file_pointer);
-        //printf("File off set before packet is: %d\n", offset);
         memset(&packet_being_sent, 0, sizeof(packet_being_sent));
         packet_being_sent.header.seq_ack_num = sending_index;
 
@@ -359,14 +340,9 @@ void sender_action_Send_N_Packets(void)
         packet_being_sent.header.bytes_of_data = i;
         ssize_t bytes_sent = send(sockfd, &packet_being_sent, sizeof(struct protocol_Packet), 0);
         
-        printf("Sending Packet num %d\n", packet_being_sent.header.seq_ack_num);
-        //printf("Packet num %d sent this:\n%s\n", packet_being_sent.header.seq_ack_num, packet_being_sent.data);
-
-        offset = ftell(file_pointer);
-        //printf("File off set after packet is: %ld\n", offset);
-        // TODO: error checking on send
         if (bytes_sent == -1){
-            // handle
+            sender_current_state = sender_Done;
+            break;
         }
         if (!timer_valid)
         {
@@ -377,6 +353,7 @@ void sender_action_Send_N_Packets(void)
     sender_current_state = Wait_for_Ack;
     return;
 }
+
 int valid_ack_num(uint32_t ack_num) 
 {
 
@@ -444,30 +421,23 @@ void sender_action_Wait_for_Ack(void)
             uint32_t ack_num = receive_buffer.seq_ack_num;
             if (valid_ack_num(ack_num)) 
             {
-                printf("Received Ack for up to %d\n", ack_num);
                 updateRTT(cpu_time_used_in_ms);
-                printf("timeoutInterval_in_ms %f\n", timeoutInterval_in_ms);
                 uint32_t old_acked = acknowledged[1];
                 acknowledged[1] = ack_num - 1;
                 
                 // update bytes left, if bytes left to send == 0, goto Send_FIN
                 uint32_t gained = (acknowledged[1] - old_acked);
-		        //printf("difference is: %d\n", gained);
 		        bytes_left_to_send = bytes_left_to_send - (gained);
-                printf("%lld bytes left to send now\n", bytes_left_to_send);
                 in_Flight[0] = ack_num;
                 if (bytes_left_to_send == 0){
                     sender_current_state = Send_Fin;
                     break;
                 }
 
-                // update file offset for sending
                 file_offset_for_sending = file_offset_for_sending + (gained);
                 fseek(file_pointer, file_offset_for_sending, SEEK_SET);
-                //unsigned long offset = ftell(file_pointer);
-                //printf("File offset now set to: %ld\n", offset);
-                
-                //TODO: update current window size based on bytes left, AMID, theoretical max
+                                
+                //update current window size based on bytes left, AMID, theoretical max
                 increment_cwindow();
 
                 sender_current_state = Send_N_Packets;
@@ -487,21 +457,19 @@ void sender_action_Wait_for_Ack(void)
         else if (bytes_received == 0) 
         {
             printf("Connection closed by peer\n");
-            //TODO: handle
-            //break;
+            sender_current_state = sender_Done;
+            break;
         } 
         /* Check if the error is due to the socket being non-blocking */
         else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
         {
             perror("Error receiving data");
-            //close(sockfd);
-            //exit(EXIT_FAILURE);
-            // TODO: handle
+            sender_current_state = sender_Done;
+            break;
         }
 
         if(cpu_time_used_in_ms > timeoutInterval_in_ms) //TODO: figure out time to use
         {
-            printf("sender timed out\n");
             quarter_cwindow();
             handle_timeout();
             
@@ -525,11 +493,10 @@ void increment_cwindow(void){
     if (bytes_left_to_send < current_window_size){
         current_window_size = bytes_left_to_send;
     }
-
     duplicate_ack_count = 0;
     in_Flight[1] = in_Flight[0] + (current_window_size - 1);
     acknowledged[0] = in_Flight[1] + 1;
-    printf("window size set to %d bytes\n", current_window_size);
+
 }
 void half_cwindow(void)
 {
@@ -545,8 +512,6 @@ void half_cwindow(void)
     in_Flight[1] = in_Flight[0] + (current_window_size - 1);
     acknowledged[0] = in_Flight[1] + 1;
     duplicate_ack_count = 0;
-
-    printf("window size halved, set to %d bytes\n", current_window_size);
 }
 void quarter_cwindow(void)
 {
@@ -562,9 +527,6 @@ void quarter_cwindow(void)
     in_Flight[1] = in_Flight[0] + (current_window_size - 1);
     acknowledged[0] = in_Flight[1] + 1;
     duplicate_ack_count = 0;
-
-    printf("window size quatered, set to %d bytes\n", current_window_size);
-
 }
 
 /* Connection Teardown */
@@ -583,7 +545,8 @@ void sender_action_Send_Fin(void)
 
     if (bytes_sent < 0) {
         perror("Error sending data");
-        //TODO: handle
+        sender_current_state = sender_Done;
+        return;
     }
     start = clock();
 
@@ -610,8 +573,6 @@ void sender_action_Wait_Fin_Ack(void)
         {
             /* If its a Fin Ack*/
             if ((receive_buffer.management_byte & 0x1) == 0x1) {
-                //TODO: set up sliding window, current packet size, RTT?
-                printf("Receiver Fin Ack\n");
                 sender_current_state = sender_Done;
                 break;
             }
@@ -619,22 +580,20 @@ void sender_action_Wait_Fin_Ack(void)
         else if (bytes_received == 0) 
         {
             printf("Connection closed by peer\n");
-            //TODO: handle
-            //break;
+            sender_current_state = sender_Done;
+            break;
         } 
         /* Check if the error is due to the socket being non-blocking */
         else if ((bytes_received == -1) && (errno != EAGAIN && errno != EWOULDBLOCK))
         {
             perror("Error receiving data\n");
-            //close(sockfd);
-            //exit(EXIT_FAILURE);
-            // TODO: handle
+            sender_current_state = sender_Done;
+            break;
         }
 
-        /* Check Timer for timeout */ //TODO: fix timer
+        /* Check Timer for timeout */ 
         else if (cpu_time_used_in_seconds >= 2)
         {   
-            printf("Fin Packet timed out\n");
             sender_current_state = Send_Fin;
             break;
         }
