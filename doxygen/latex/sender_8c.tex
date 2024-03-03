@@ -1,0 +1,447 @@
+\doxysection{src/sender.c File Reference}
+\hypertarget{sender_8c}{}\label{sender_8c}\index{src/sender.c@{src/sender.c}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$arpa/inet.\+h$>$}\newline
+{\ttfamily \#include $<$netinet/in.\+h$>$}\newline
+{\ttfamily \#include $<$fcntl.\+h$>$}\newline
+{\ttfamily \#include $<$netdb.\+h$>$}\newline
+{\ttfamily \#include $<$sys/types.\+h$>$}\newline
+{\ttfamily \#include $<$sys/socket.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$pthread.\+h$>$}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include "{}our\+\_\+protocol.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{sender_8c_af5abd28c44c29b7397c84f1fec4b1d84}{ALPHA}}~0.\+125
+\item 
+\#define \mbox{\hyperlink{sender_8c_a1b996515309fc3c03449912bb33046e3}{BETA}}~0.\+25
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5}{sender\+\_\+state}} \{ \newline
+\mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a1973d83b73e89eedf2d0717862e9c432}{Start\+\_\+\+Connection}}
+, \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5ab3e8b1db29afc5c6b24a886d02118323}{Send\+\_\+\+N\+\_\+\+Packets}}
+, \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a3f878a54a161b8b6e0876101b2669890}{Wait\+\_\+for\+\_\+\+Ack}}
+, \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af92647ebc6201dfb4e15342eeb839fca}{Send\+\_\+\+Fin}}
+, \newline
+\mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af819e39c031893e829ac23c6a4aed375}{Wait\+\_\+\+Fin\+\_\+\+Ack}}
+, \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a59eee5021754297d44c7d98a77523040}{sender\+\_\+\+Done}}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{sender_8c_af312ae26b05b921ad0aa866593863564}{sender\+\_\+init}} (char \texorpdfstring{$\ast$}{*}filename, unsigned long long int bytes\+To\+Transfer, char \texorpdfstring{$\ast$}{*}hostname, unsigned short int host\+UDPport)
+\begin{DoxyCompactList}\small\item\em Initializes the sender with the specified file, transfer size, hostname, and UDP port. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_a10ccf974fa555c387c8c96c3316a1788}{open\+\_\+file}} (char \texorpdfstring{$\ast$}{*}filename, unsigned long long int bytes\+To\+Transfer)
+\begin{DoxyCompactList}\small\item\em Opens the file to be sent and calculates the bytes to transfer. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_addf6a7d8bfbe4327f75be893e2374d76}{setup\+\_\+socket}} (char \texorpdfstring{$\ast$}{*}hostname, unsigned short int host\+UDPport)
+\begin{DoxyCompactList}\small\item\em Sets up the UDP socket for communication with the receiver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a550d2d44e4608cddf92194b93fb46e4f}{setup\+\_\+cwindow}} (void)
+\begin{DoxyCompactList}\small\item\em Sets up the congestion window for the sender. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a111f31ab5f5713e9d26370868f63d181}{update\+RTT}} (double sample\+RTT)
+\begin{DoxyCompactList}\small\item\em Updates the Round-\/\+Trip Time (RTT) estimates. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_aad92dc58de2a0ab7b08d6593828be505}{handle\+\_\+timeout}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the timeout event. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_aab42a1f2db7c1030fc4843bc03dea117}{sender\+\_\+finish}} (void)
+\begin{DoxyCompactList}\small\item\em Cleans up resources used by the sender. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a0691acb279f60cded7a863a67c0e74b3}{sender\+\_\+action\+\_\+\+Start\+\_\+\+Connection}} (void)
+\begin{DoxyCompactList}\small\item\em Initiates the connection setup process by sending a SYNC packet. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_a288860b3a09a32dadf452293dc524849}{is\+\_\+\+Sync\+\_\+\+Ack}} (struct \mbox{\hyperlink{structprotocol___header}{protocol\+\_\+\+Header}} \texorpdfstring{$\ast$}{*}receive\+\_\+buffer)
+\begin{DoxyCompactList}\small\item\em Checks if the received packet is a valid SYNC\+\_\+\+ACK packet. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a3fcdc0686db858ba87cab89d0012b18e}{init\+\_\+rtt}} (void)
+\begin{DoxyCompactList}\small\item\em Initializes Round-\/\+Trip Time (RTT) values based on the initial measurement. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_ab21234b58615583b54f5c5ccbfdc6c53}{sender\+\_\+action\+\_\+\+Send\+\_\+\+N\+\_\+\+Packets}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the process of sending a number of data packets. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_a3cd524ce6dac6eadec36900dc7d1dada}{valid\+\_\+ack\+\_\+num}} (uint32\+\_\+t ack\+\_\+num)
+\begin{DoxyCompactList}\small\item\em Checks if a given acknowledgment number is valid. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_a728eb37c7c1a511ff5f4c5fb46514f8b}{sending\+\_\+index\+\_\+in\+\_\+range}} (uint32\+\_\+t sending\+\_\+index)
+\begin{DoxyCompactList}\small\item\em Checks if the sending index is within the current congestion window range. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a512b1ae99ee2198825d60e5c49276edb}{sender\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Ack}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the state of waiting for packet acknowledgments. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a44eb644b4062d7f901688ff878f2776a}{increment\+\_\+cwindow}} (void)
+\begin{DoxyCompactList}\small\item\em Increases the current congestion window size. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a458bbe7634ca35902cc053c4a635be55}{half\+\_\+cwindow}} (void)
+\begin{DoxyCompactList}\small\item\em Halves the current congestion window size. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a79e3f6aa2d82fd3241fa07a222f57efb}{quarter\+\_\+cwindow}} (void)
+\begin{DoxyCompactList}\small\item\em Reduces the current congestion window size to a quarter of its size. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a6de279312df1a8153607b670c5e967b7}{sender\+\_\+action\+\_\+\+Send\+\_\+\+Fin}} (void)
+\begin{DoxyCompactList}\small\item\em Initiates the connection teardown process by sending a FIN packet. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_abc00f1be5096b110f9ff90400312bbe4}{sender\+\_\+action\+\_\+\+Wait\+\_\+\+Fin\+\_\+\+Ack}} (void)
+\begin{DoxyCompactList}\small\item\em Waits for a FIN\+\_\+\+ACK packet from the receiver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sender_8c_a470031165b913666b8a71d2b05ba7815}{rsend}} (char \texorpdfstring{$\ast$}{*}hostname, unsigned short int host\+UDPport, char \texorpdfstring{$\ast$}{*}filename, unsigned long long int bytes\+To\+Transfer)
+\begin{DoxyCompactList}\small\item\em Main state machine function for the sender. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sender_8c_a3c04138a5bfe5d72780bb7e82a18e627}{main}} (int argc, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}argv)
+\begin{DoxyCompactList}\small\item\em Main function for the sender application. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{sender_8c_af5abd28c44c29b7397c84f1fec4b1d84}\label{sender_8c_af5abd28c44c29b7397c84f1fec4b1d84} 
+\index{sender.c@{sender.c}!ALPHA@{ALPHA}}
+\index{ALPHA@{ALPHA}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{ALPHA}{ALPHA}}
+{\footnotesize\ttfamily \#define ALPHA~0.\+125}
+
+\Hypertarget{sender_8c_a1b996515309fc3c03449912bb33046e3}\label{sender_8c_a1b996515309fc3c03449912bb33046e3} 
+\index{sender.c@{sender.c}!BETA@{BETA}}
+\index{BETA@{BETA}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{BETA}{BETA}}
+{\footnotesize\ttfamily \#define BETA~0.\+25}
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5} 
+\index{sender.c@{sender.c}!sender\_state@{sender\_state}}
+\index{sender\_state@{sender\_state}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_state}{sender\_state}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5}{sender\+\_\+state}}}
+
+\begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Start\_Connection@{Start\_Connection}!sender.c@{sender.c}}\index{sender.c@{sender.c}!Start\_Connection@{Start\_Connection}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a1973d83b73e89eedf2d0717862e9c432}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a1973d83b73e89eedf2d0717862e9c432} 
+Start\+\_\+\+Connection&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Send\_N\_Packets@{Send\_N\_Packets}!sender.c@{sender.c}}\index{sender.c@{sender.c}!Send\_N\_Packets@{Send\_N\_Packets}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5ab3e8b1db29afc5c6b24a886d02118323}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5ab3e8b1db29afc5c6b24a886d02118323} 
+Send\+\_\+\+N\+\_\+\+Packets&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_for\_Ack@{Wait\_for\_Ack}!sender.c@{sender.c}}\index{sender.c@{sender.c}!Wait\_for\_Ack@{Wait\_for\_Ack}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a3f878a54a161b8b6e0876101b2669890}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a3f878a54a161b8b6e0876101b2669890} 
+Wait\+\_\+for\+\_\+\+Ack&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Send\_Fin@{Send\_Fin}!sender.c@{sender.c}}\index{sender.c@{sender.c}!Send\_Fin@{Send\_Fin}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af92647ebc6201dfb4e15342eeb839fca}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af92647ebc6201dfb4e15342eeb839fca} 
+Send\+\_\+\+Fin&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_Fin\_Ack@{Wait\_Fin\_Ack}!sender.c@{sender.c}}\index{sender.c@{sender.c}!Wait\_Fin\_Ack@{Wait\_Fin\_Ack}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af819e39c031893e829ac23c6a4aed375}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5af819e39c031893e829ac23c6a4aed375} 
+Wait\+\_\+\+Fin\+\_\+\+Ack&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{sender\_Done@{sender\_Done}!sender.c@{sender.c}}\index{sender.c@{sender.c}!sender\_Done@{sender\_Done}}}\Hypertarget{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a59eee5021754297d44c7d98a77523040}\label{sender_8c_adbdc78c17d27939e97ba18b9b99b47f5a59eee5021754297d44c7d98a77523040} 
+sender\+\_\+\+Done&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{sender_8c_a458bbe7634ca35902cc053c4a635be55}\label{sender_8c_a458bbe7634ca35902cc053c4a635be55} 
+\index{sender.c@{sender.c}!half\_cwindow@{half\_cwindow}}
+\index{half\_cwindow@{half\_cwindow}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{half\_cwindow()}{half\_cwindow()}}
+{\footnotesize\ttfamily void half\+\_\+cwindow (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Halves the current congestion window size. 
+
+Reduces the current window size by half to adjust the flow control in response to network conditions. It ensures that the window size aligns with the protocol data size and does not exceed the bytes left to send. \Hypertarget{sender_8c_aad92dc58de2a0ab7b08d6593828be505}\label{sender_8c_aad92dc58de2a0ab7b08d6593828be505} 
+\index{sender.c@{sender.c}!handle\_timeout@{handle\_timeout}}
+\index{handle\_timeout@{handle\_timeout}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{handle\_timeout()}{handle\_timeout()}}
+{\footnotesize\ttfamily void handle\+\_\+timeout (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the timeout event. 
+
+Doubles the timeout interval as part of the exponential backoff strategy in case of a timeout event. \Hypertarget{sender_8c_a44eb644b4062d7f901688ff878f2776a}\label{sender_8c_a44eb644b4062d7f901688ff878f2776a} 
+\index{sender.c@{sender.c}!increment\_cwindow@{increment\_cwindow}}
+\index{increment\_cwindow@{increment\_cwindow}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{increment\_cwindow()}{increment\_cwindow()}}
+{\footnotesize\ttfamily void increment\+\_\+cwindow (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Increases the current congestion window size. 
+
+Expands the size of the congestion window incrementally based on successful packet transmissions, up to a maximum window size. \Hypertarget{sender_8c_a3fcdc0686db858ba87cab89d0012b18e}\label{sender_8c_a3fcdc0686db858ba87cab89d0012b18e} 
+\index{sender.c@{sender.c}!init\_rtt@{init\_rtt}}
+\index{init\_rtt@{init\_rtt}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{init\_rtt()}{init\_rtt()}}
+{\footnotesize\ttfamily void init\+\_\+rtt (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Initializes Round-\/\+Trip Time (RTT) values based on the initial measurement. 
+
+Sets the initial RTT, deviation, and timeout interval values based on the first measured RTT. \Hypertarget{sender_8c_a288860b3a09a32dadf452293dc524849}\label{sender_8c_a288860b3a09a32dadf452293dc524849} 
+\index{sender.c@{sender.c}!is\_Sync\_Ack@{is\_Sync\_Ack}}
+\index{is\_Sync\_Ack@{is\_Sync\_Ack}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{is\_Sync\_Ack()}{is\_Sync\_Ack()}}
+{\footnotesize\ttfamily int is\+\_\+\+Sync\+\_\+\+Ack (\begin{DoxyParamCaption}\item[{struct \mbox{\hyperlink{structprotocol___header}{protocol\+\_\+\+Header}} \texorpdfstring{$\ast$}{*}}]{receive\+\_\+buffer }\end{DoxyParamCaption})}
+
+
+
+Checks if the received packet is a valid SYNC\+\_\+\+ACK packet. 
+
+Verifies if the SYNC\+\_\+\+ACK bit is set in the management byte of the received packet header.
+
+
+\begin{DoxyParams}{Parameters}
+{\em receive\+\_\+buffer} & Pointer to the received protocol header. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if it\textquotesingle{}s a SYNC\+\_\+\+ACK packet, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a3c04138a5bfe5d72780bb7e82a18e627}\label{sender_8c_a3c04138a5bfe5d72780bb7e82a18e627} 
+\index{sender.c@{sender.c}!main@{main}}
+\index{main@{main}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily int main (\begin{DoxyParamCaption}\item[{int}]{argc,  }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{argv }\end{DoxyParamCaption})}
+
+
+
+Main function for the sender application. 
+
+Parses command-\/line arguments to set up the receiver\textquotesingle{}s hostname, UDP port, file to send, and the number of bytes to transfer. Then calls the rsend function to start the sending process.
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of command-\/line arguments. \\
+\hline
+{\em argv} & Array of command-\/line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns the exit status. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a10ccf974fa555c387c8c96c3316a1788}\label{sender_8c_a10ccf974fa555c387c8c96c3316a1788} 
+\index{sender.c@{sender.c}!open\_file@{open\_file}}
+\index{open\_file@{open\_file}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{open\_file()}{open\_file()}}
+{\footnotesize\ttfamily int open\+\_\+file (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{filename,  }\item[{unsigned long long int}]{bytes\+To\+Transfer }\end{DoxyParamCaption})}
+
+
+
+Opens the file to be sent and calculates the bytes to transfer. 
+
+This function opens the specified file for reading and sets the bytes\+\_\+left\+\_\+to\+\_\+send based on the file size and the requested bytes to transfer.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The path to the file to be sent. \\
+\hline
+{\em bytes\+To\+Transfer} & The number of bytes to transfer from the file. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 0 on success, -\/1 on failure. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a79e3f6aa2d82fd3241fa07a222f57efb}\label{sender_8c_a79e3f6aa2d82fd3241fa07a222f57efb} 
+\index{sender.c@{sender.c}!quarter\_cwindow@{quarter\_cwindow}}
+\index{quarter\_cwindow@{quarter\_cwindow}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{quarter\_cwindow()}{quarter\_cwindow()}}
+{\footnotesize\ttfamily void quarter\+\_\+cwindow (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Reduces the current congestion window size to a quarter of its size. 
+
+Drastically decreases the current window size to a quarter in response to network events like triple duplicate ACKs. Adjusts the window size to align with the protocol data size and ensures it does not exceed the remaining bytes to send. \Hypertarget{sender_8c_a470031165b913666b8a71d2b05ba7815}\label{sender_8c_a470031165b913666b8a71d2b05ba7815} 
+\index{sender.c@{sender.c}!rsend@{rsend}}
+\index{rsend@{rsend}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{rsend()}{rsend()}}
+{\footnotesize\ttfamily void rsend (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{hostname,  }\item[{unsigned short int}]{host\+UDPport,  }\item[{char \texorpdfstring{$\ast$}{*}}]{filename,  }\item[{unsigned long long int}]{bytes\+To\+Transfer }\end{DoxyParamCaption})}
+
+
+
+Main state machine function for the sender. 
+
+This function initializes the sender with the specified file, transfer size, hostname, and UDP port. It then enters a state machine loop, handling various states like connection setup, data sending, waiting for acknowledgments, and connection teardown.
+
+
+\begin{DoxyParams}{Parameters}
+{\em hostname} & The hostname or IP address of the receiver. \\
+\hline
+{\em host\+UDPport} & The UDP port number of the receiver. \\
+\hline
+{\em filename} & The path to the file to be sent. \\
+\hline
+{\em bytes\+To\+Transfer} & The number of bytes to transfer from the file. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{sender_8c_a6de279312df1a8153607b670c5e967b7}\label{sender_8c_a6de279312df1a8153607b670c5e967b7} 
+\index{sender.c@{sender.c}!sender\_action\_Send\_Fin@{sender\_action\_Send\_Fin}}
+\index{sender\_action\_Send\_Fin@{sender\_action\_Send\_Fin}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_action\_Send\_Fin()}{sender\_action\_Send\_Fin()}}
+{\footnotesize\ttfamily void sender\+\_\+action\+\_\+\+Send\+\_\+\+Fin (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Initiates the connection teardown process by sending a FIN packet. 
+
+Constructs and sends a FIN packet to the receiver to signal the end of data transmission. Transitions the sender\textquotesingle{}s state to waiting for a FIN\+\_\+\+ACK response. \Hypertarget{sender_8c_ab21234b58615583b54f5c5ccbfdc6c53}\label{sender_8c_ab21234b58615583b54f5c5ccbfdc6c53} 
+\index{sender.c@{sender.c}!sender\_action\_Send\_N\_Packets@{sender\_action\_Send\_N\_Packets}}
+\index{sender\_action\_Send\_N\_Packets@{sender\_action\_Send\_N\_Packets}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_action\_Send\_N\_Packets()}{sender\_action\_Send\_N\_Packets()}}
+{\footnotesize\ttfamily void sender\+\_\+action\+\_\+\+Send\+\_\+\+N\+\_\+\+Packets (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the process of sending a number of data packets. 
+
+Reads data from the file and sends packets sequentially according to the current congestion window. Updates the sender\textquotesingle{}s state machine to wait for acknowledgments. \Hypertarget{sender_8c_a0691acb279f60cded7a863a67c0e74b3}\label{sender_8c_a0691acb279f60cded7a863a67c0e74b3} 
+\index{sender.c@{sender.c}!sender\_action\_Start\_Connection@{sender\_action\_Start\_Connection}}
+\index{sender\_action\_Start\_Connection@{sender\_action\_Start\_Connection}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_action\_Start\_Connection()}{sender\_action\_Start\_Connection()}}
+{\footnotesize\ttfamily void sender\+\_\+action\+\_\+\+Start\+\_\+\+Connection (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Initiates the connection setup process by sending a SYNC packet. 
+
+Sends a SYNC packet to the receiver to start the connection setup. After sending, it waits for a SYNC\+\_\+\+ACK response from the receiver and transitions the sender\textquotesingle{}s state machine based on the response. \Hypertarget{sender_8c_abc00f1be5096b110f9ff90400312bbe4}\label{sender_8c_abc00f1be5096b110f9ff90400312bbe4} 
+\index{sender.c@{sender.c}!sender\_action\_Wait\_Fin\_Ack@{sender\_action\_Wait\_Fin\_Ack}}
+\index{sender\_action\_Wait\_Fin\_Ack@{sender\_action\_Wait\_Fin\_Ack}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_action\_Wait\_Fin\_Ack()}{sender\_action\_Wait\_Fin\_Ack()}}
+{\footnotesize\ttfamily void sender\+\_\+action\+\_\+\+Wait\+\_\+\+Fin\+\_\+\+Ack (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Waits for a FIN\+\_\+\+ACK packet from the receiver. 
+
+In this state, the sender waits for a FIN\+\_\+\+ACK packet indicating that the receiver has acknowledged the end of transmission. If a FIN\+\_\+\+ACK is received or a timeout occurs, it transitions to the appropriate next state. \Hypertarget{sender_8c_a512b1ae99ee2198825d60e5c49276edb}\label{sender_8c_a512b1ae99ee2198825d60e5c49276edb} 
+\index{sender.c@{sender.c}!sender\_action\_Wait\_for\_Ack@{sender\_action\_Wait\_for\_Ack}}
+\index{sender\_action\_Wait\_for\_Ack@{sender\_action\_Wait\_for\_Ack}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_action\_Wait\_for\_Ack()}{sender\_action\_Wait\_for\_Ack()}}
+{\footnotesize\ttfamily void sender\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Ack (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the state of waiting for packet acknowledgments. 
+
+Monitors for incoming acknowledgments, updates the congestion window, and handles timeout events. Transitions the sender\textquotesingle{}s state machine based on received acknowledgments or timeouts. \Hypertarget{sender_8c_aab42a1f2db7c1030fc4843bc03dea117}\label{sender_8c_aab42a1f2db7c1030fc4843bc03dea117} 
+\index{sender.c@{sender.c}!sender\_finish@{sender\_finish}}
+\index{sender\_finish@{sender\_finish}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_finish()}{sender\_finish()}}
+{\footnotesize\ttfamily void sender\+\_\+finish (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Cleans up resources used by the sender. 
+
+This function closes the socket and the file associated with the sender. It is used to clean up resources before the sender shuts down. \Hypertarget{sender_8c_af312ae26b05b921ad0aa866593863564}\label{sender_8c_af312ae26b05b921ad0aa866593863564} 
+\index{sender.c@{sender.c}!sender\_init@{sender\_init}}
+\index{sender\_init@{sender\_init}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sender\_init()}{sender\_init()}}
+{\footnotesize\ttfamily int sender\+\_\+init (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{filename,  }\item[{unsigned long long int}]{bytes\+To\+Transfer,  }\item[{char \texorpdfstring{$\ast$}{*}}]{hostname,  }\item[{unsigned short int}]{host\+UDPport }\end{DoxyParamCaption})}
+
+
+
+Initializes the sender with the specified file, transfer size, hostname, and UDP port. 
+
+This function sets up the file to be sent, initializes the socket for communication with the receiver, and sets up the congestion window. It also initializes the sender\textquotesingle{}s state machine.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The path to the file to be sent. \\
+\hline
+{\em bytes\+To\+Transfer} & The number of bytes to transfer from the file. \\
+\hline
+{\em hostname} & The hostname or IP address of the receiver. \\
+\hline
+{\em host\+UDPport} & The UDP port number of the receiver. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 0 on successful initialization, -\/1 on failure. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a728eb37c7c1a511ff5f4c5fb46514f8b}\label{sender_8c_a728eb37c7c1a511ff5f4c5fb46514f8b} 
+\index{sender.c@{sender.c}!sending\_index\_in\_range@{sending\_index\_in\_range}}
+\index{sending\_index\_in\_range@{sending\_index\_in\_range}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{sending\_index\_in\_range()}{sending\_index\_in\_range()}}
+{\footnotesize\ttfamily int sending\+\_\+index\+\_\+in\+\_\+range (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{sending\+\_\+index }\end{DoxyParamCaption})}
+
+
+
+Checks if the sending index is within the current congestion window range. 
+
+Determines if a given index for sending data is within the bounds of the current congestion window.
+
+
+\begin{DoxyParams}{Parameters}
+{\em sending\+\_\+index} & The index to be checked. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if the index is within range, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a550d2d44e4608cddf92194b93fb46e4f}\label{sender_8c_a550d2d44e4608cddf92194b93fb46e4f} 
+\index{sender.c@{sender.c}!setup\_cwindow@{setup\_cwindow}}
+\index{setup\_cwindow@{setup\_cwindow}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{setup\_cwindow()}{setup\_cwindow()}}
+{\footnotesize\ttfamily void setup\+\_\+cwindow (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Sets up the congestion window for the sender. 
+
+Initializes the congestion window size and the tracking arrays for in-\/flight and acknowledged packets. The window size is set to either the protocol data size or the remaining bytes to send, whichever is smaller. \Hypertarget{sender_8c_addf6a7d8bfbe4327f75be893e2374d76}\label{sender_8c_addf6a7d8bfbe4327f75be893e2374d76} 
+\index{sender.c@{sender.c}!setup\_socket@{setup\_socket}}
+\index{setup\_socket@{setup\_socket}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{setup\_socket()}{setup\_socket()}}
+{\footnotesize\ttfamily int setup\+\_\+socket (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{hostname,  }\item[{unsigned short int}]{host\+UDPport }\end{DoxyParamCaption})}
+
+
+
+Sets up the UDP socket for communication with the receiver. 
+
+This function creates a UDP socket, resolves the receiver\textquotesingle{}s hostname to an IP address, and connects the socket to the receiver\textquotesingle{}s address and port. It also sets the socket to non-\/blocking mode.
+
+
+\begin{DoxyParams}{Parameters}
+{\em hostname} & The hostname or IP address of the receiver. \\
+\hline
+{\em host\+UDPport} & The UDP port number of the receiver. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 0 on success, -\/1 on failure. 
+\end{DoxyReturn}
+\Hypertarget{sender_8c_a111f31ab5f5713e9d26370868f63d181}\label{sender_8c_a111f31ab5f5713e9d26370868f63d181} 
+\index{sender.c@{sender.c}!updateRTT@{updateRTT}}
+\index{updateRTT@{updateRTT}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{updateRTT()}{updateRTT()}}
+{\footnotesize\ttfamily void update\+RTT (\begin{DoxyParamCaption}\item[{double}]{sample\+RTT }\end{DoxyParamCaption})}
+
+
+
+Updates the Round-\/\+Trip Time (RTT) estimates. 
+
+Uses the sample RTT value to update the estimated RTT and the deviation (dev\+RTT), and recalculates the timeout interval accordingly.
+
+
+\begin{DoxyParams}{Parameters}
+{\em sample\+RTT} & The sampled RTT value for the latest acknowledged packet. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{sender_8c_a3cd524ce6dac6eadec36900dc7d1dada}\label{sender_8c_a3cd524ce6dac6eadec36900dc7d1dada} 
+\index{sender.c@{sender.c}!valid\_ack\_num@{valid\_ack\_num}}
+\index{valid\_ack\_num@{valid\_ack\_num}!sender.c@{sender.c}}
+\doxysubsubsection{\texorpdfstring{valid\_ack\_num()}{valid\_ack\_num()}}
+{\footnotesize\ttfamily int valid\+\_\+ack\+\_\+num (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{ack\+\_\+num }\end{DoxyParamCaption})}
+
+
+
+Checks if a given acknowledgment number is valid. 
+
+Validates the acknowledgment number against the range of sequence numbers in the current congestion window.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ack\+\_\+num} & The acknowledgment number to validate. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if the acknowledgment number is valid, 0 otherwise. 
+\end{DoxyReturn}

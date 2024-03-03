@@ -1,0 +1,43 @@
+\doxysection{our\+\_\+protocol.\+h}
+\hypertarget{our__protocol_8h_source}{}\label{our__protocol_8h_source}\index{src/our\_protocol.h@{src/our\_protocol.h}}
+\mbox{\hyperlink{our__protocol_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#include\ <stdlib.h>}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <string.h>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <arpa/inet.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <netinet/in.h>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <sys/types.h>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <sys/socket.h>}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ <unistd.h>}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ <pthread.h>}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ <errno.h>}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ <time.h>}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#define\ PROTOCOL\_DATA\_SIZE\ 1450}}
+\DoxyCodeLine{00016\ \textcolor{comment}{//\#define\ MAX\_WINDOW\_SIZE\ 1450}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#define\ MAX\_WINDOW\_SIZE\ 58000\ \ }\textcolor{comment}{/*\ Set\ as\ 40\ *\ PACKET\_SIZE\ \ */}\textcolor{preprocessor}{\ }}
+\DoxyCodeLine{00018\ \textcolor{comment}{//\#define\ MAX\_WINDOW\_SIZE\ 21750\ \ /*\ Set\ as\ (uint16\_t\ /\ 3)\ */\ }}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#define\ PACKET\_SIZE\ 1450\ }\textcolor{comment}{//\ Just\ data.}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{comment}{//987348}}
+\DoxyCodeLine{00022\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structprotocol___header}{protocol\_Header}}}
+\DoxyCodeLine{00023\ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{comment}{/*\ Sync\ bit:7,\ Sync\ Ack\ bit:6,\ 0:5,\ 0:4,\ 0:3,\ 0:2,\ Fin\ bit:1,\ Fin\ ack\ bit:0\ */}}
+\DoxyCodeLine{00025\ \ \ \ \ uint8\_t\ \mbox{\hyperlink{structprotocol___header_a9c0c7d884485ba50f12a4410346f9074}{management\_byte}};}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{comment}{/*\ Servers\ as\ Seq\ num\ for\ sender,\ and\ Ack\ num\ for\ Receiver\ */}}
+\DoxyCodeLine{00028\ \ \ \ \ uint32\_t\ \mbox{\hyperlink{structprotocol___header_afd86150e93638e616f06bbde291bdad0}{seq\_ack\_num}};}
+\DoxyCodeLine{00029\ \ \ \ \ uint16\_t\ \mbox{\hyperlink{structprotocol___header_a730ad4095efdfebb32d99623e64bb21b}{bytes\_of\_data}};}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \};}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00033\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structprotocol___packet}{protocol\_Packet}}}
+\DoxyCodeLine{00034\ \{}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structprotocol___header}{protocol\_Header}}\ \mbox{\hyperlink{structprotocol___packet_a5acd48d3366d190e6fc829d2f6aa835c}{header}};}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordtype}{char}\ \mbox{\hyperlink{structprotocol___packet_aa47b638cfb6a7e703033da5120fbf62b}{data}}[\mbox{\hyperlink{our__protocol_8h_a30d0b46948dbca499a5481779b554467}{PROTOCOL\_DATA\_SIZE}}];}
+\DoxyCodeLine{00037\ \};}
+
+\end{DoxyCode}

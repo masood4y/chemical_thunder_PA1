@@ -1,0 +1,414 @@
+\doxysection{src/receiver.c File Reference}
+\hypertarget{receiver_8c}{}\label{receiver_8c}\index{src/receiver.c@{src/receiver.c}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$arpa/inet.\+h$>$}\newline
+{\ttfamily \#include $<$netinet/in.\+h$>$}\newline
+{\ttfamily \#include $<$sys/types.\+h$>$}\newline
+{\ttfamily \#include $<$sys/socket.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$pthread.\+h$>$}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+{\ttfamily \#include "{}our\+\_\+protocol.\+h"{}}\newline
+{\ttfamily \#include $<$fcntl.\+h$>$}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{receiver_8c_a36aa9ad4c7240fb5af3d0dfa6b0c95d1}{LONG\+\_\+\+TIMER\+\_\+\+MS}}~5000
+\item 
+\#define \mbox{\hyperlink{receiver_8c_a3f86f9a299c523ed84a4e79280389d58}{SHORT\+\_\+\+TIMER\+\_\+\+MS}}~3
+\item 
+\#define \mbox{\hyperlink{receiver_8c_a6b20d41d6252e9871430c242cb1a56e7}{BUFFER\+\_\+\+SIZE}}~(sizeof(struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}}) + 16)
+\item 
+\#define \mbox{\hyperlink{receiver_8c_a130dc017a7345f294114fc4b84dbcbe4}{MAX\+\_\+\+PACKETS\+\_\+\+IN\+\_\+\+WINDOW}}~(\mbox{\hyperlink{our__protocol_8h_a52e7bfd213b4cf538c75ac8b8f099ab9}{MAX\+\_\+\+WINDOW\+\_\+\+SIZE}} / \mbox{\hyperlink{our__protocol_8h_aebdc7d8ca8e25ed8efc90bb88ef7ef5b}{PACKET\+\_\+\+SIZE}})
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178}{receiver\+\_\+state}} \{ \newline
+\mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178a2929ab705b4e1b23990cbb194b496b23}{Wait\+\_\+\+Connection}}
+, \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5562a907ad8a9c1e6f571f2c7349ecbf}{Wait\+\_\+for\+\_\+\+Packet}}
+, \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178a8a4445b074c237002a84118e4725328a}{Wait\+\_\+for\+\_\+\+Pipeline}}
+, \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178a0cb55e1e176ecfe597cdc09152299461}{Send\+\_\+\+Fin\+\_\+\+Ack}}
+, \newline
+\mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5c7e361c16374fa72dc35dbb72fcfd29}{Wait\+\_\+in\+Case}}
+, \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178ab68c130eb6caa378c2c394e9054bbb63}{Finished}}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{receiver_8c_a673c8779dec6dfb87eff45cb42cff4bf}{receiver\+\_\+init}} (unsigned short int my\+UDPport, char \texorpdfstring{$\ast$}{*}destination\+File, unsigned long long int write\+Rate)
+\begin{DoxyCompactList}\small\item\em Initializes the receiver with the specified UDP port, destination file, and write rate. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_ad4579d3091294ef4fa4d708c15ef7c9c}{setup\+\_\+socket}} (unsigned short int my\+UDPport)
+\begin{DoxyCompactList}\small\item\em Sets up the UDP socket for the receiver. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_af9c984477ed6745b60bf61c97e6fc7f1}{setup\+\_\+file}} (char \texorpdfstring{$\ast$}{*}destination\+File)
+\begin{DoxyCompactList}\small\item\em Sets up the file for writing received data. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_a0408e8c1a9226ebefed7869f204d054b}{setup\+\_\+recv\+\_\+window}} (void)
+\begin{DoxyCompactList}\small\item\em Initializes the receiver\textquotesingle{}s window for packet processing. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_a4a41275a0f0717d9912dcecafbcdfdc8}{receiver\+\_\+finish}} (void)
+\begin{DoxyCompactList}\small\item\em Cleans up resources used by the receiver. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_ac777be4472f0072eae59d0746d087d4a}{is\+\_\+\+SYNC}} (struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}receive\+\_\+buffer)
+\begin{DoxyCompactList}\small\item\em Checks if the incoming packet is a valid SYNC packet. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_ad12cb6ed25a1a8af544cfb52c2b25a2e}{is\+\_\+data}} (struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}receive\+\_\+buffer)
+\begin{DoxyCompactList}\small\item\em Checks if the incoming packet is a data packet. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_adcca714f63ac705a8afcc4a23b93b137}{is\+\_\+\+FIN}} (struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}receive\+\_\+buffer)
+\begin{DoxyCompactList}\small\item\em Checks if the incoming packet is a valid FIN packet. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_a603e10550500ba3530d93b200cbabe53}{is\+\_\+duplicate}} (uint32\+\_\+t seq\+\_\+num)
+\begin{DoxyCompactList}\small\item\em Checks if the incoming sequence number is a duplicate. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_ad0c95a5f6527d466350443cd81b833a5}{receiver\+\_\+action\+\_\+\+Wait\+\_\+\+Connection}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the Wait Connection state of the receiver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_acb49a1968d8212126e1bcc417cd24180}{receiver\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Packet}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the Wait for Packet state of the receiver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_a1b4281dbfc0af369e5f486568880e50e}{receiver\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Pipeline}} (void)
+\begin{DoxyCompactList}\small\item\em Handles the Wait for Pipeline state of the receiver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_abf3a6b6abbe478e75ea6df3d9d1dba0b}{add\+\_\+data\+\_\+to\+\_\+buffer}} (struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}receive\+\_\+buffer)
+\begin{DoxyCompactList}\small\item\em Adds data from a received packet to the buffer. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_ad2e9228b482b59472ef989421b0a44a5}{receiver\+\_\+action\+\_\+\+Send\+\_\+\+Fin\+\_\+\+Ack}} (void)
+\begin{DoxyCompactList}\small\item\em Sends a FIN\+\_\+\+ACK packet to the sender. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_a6f5855dc7eede31fbd971ab48bf49e55}{receiver\+\_\+action\+\_\+\+Wait\+\_\+in\+Case}} (void)
+\begin{DoxyCompactList}\small\item\em Waits for a long duration in case another FIN packet is received. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{receiver_8c_ab41fdd85753470e49e9439d9e096947b}{rrecv}} (unsigned short int my\+UDPport, char \texorpdfstring{$\ast$}{*}destination\+File, unsigned long long int write\+Rate)
+\begin{DoxyCompactList}\small\item\em Main state machine for the receiver. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{receiver_8c_a3c04138a5bfe5d72780bb7e82a18e627}{main}} (int argc, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}argv)
+\begin{DoxyCompactList}\small\item\em Main function for the receiver application. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{receiver_8c_a6b20d41d6252e9871430c242cb1a56e7}\label{receiver_8c_a6b20d41d6252e9871430c242cb1a56e7} 
+\index{receiver.c@{receiver.c}!BUFFER\_SIZE@{BUFFER\_SIZE}}
+\index{BUFFER\_SIZE@{BUFFER\_SIZE}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{BUFFER\_SIZE}{BUFFER\_SIZE}}
+{\footnotesize\ttfamily \#define BUFFER\+\_\+\+SIZE~(sizeof(struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}}) + 16)}
+
+\Hypertarget{receiver_8c_a36aa9ad4c7240fb5af3d0dfa6b0c95d1}\label{receiver_8c_a36aa9ad4c7240fb5af3d0dfa6b0c95d1} 
+\index{receiver.c@{receiver.c}!LONG\_TIMER\_MS@{LONG\_TIMER\_MS}}
+\index{LONG\_TIMER\_MS@{LONG\_TIMER\_MS}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{LONG\_TIMER\_MS}{LONG\_TIMER\_MS}}
+{\footnotesize\ttfamily \#define LONG\+\_\+\+TIMER\+\_\+\+MS~5000}
+
+\Hypertarget{receiver_8c_a130dc017a7345f294114fc4b84dbcbe4}\label{receiver_8c_a130dc017a7345f294114fc4b84dbcbe4} 
+\index{receiver.c@{receiver.c}!MAX\_PACKETS\_IN\_WINDOW@{MAX\_PACKETS\_IN\_WINDOW}}
+\index{MAX\_PACKETS\_IN\_WINDOW@{MAX\_PACKETS\_IN\_WINDOW}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{MAX\_PACKETS\_IN\_WINDOW}{MAX\_PACKETS\_IN\_WINDOW}}
+{\footnotesize\ttfamily \#define MAX\+\_\+\+PACKETS\+\_\+\+IN\+\_\+\+WINDOW~(\mbox{\hyperlink{our__protocol_8h_a52e7bfd213b4cf538c75ac8b8f099ab9}{MAX\+\_\+\+WINDOW\+\_\+\+SIZE}} / \mbox{\hyperlink{our__protocol_8h_aebdc7d8ca8e25ed8efc90bb88ef7ef5b}{PACKET\+\_\+\+SIZE}})}
+
+\Hypertarget{receiver_8c_a3f86f9a299c523ed84a4e79280389d58}\label{receiver_8c_a3f86f9a299c523ed84a4e79280389d58} 
+\index{receiver.c@{receiver.c}!SHORT\_TIMER\_MS@{SHORT\_TIMER\_MS}}
+\index{SHORT\_TIMER\_MS@{SHORT\_TIMER\_MS}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{SHORT\_TIMER\_MS}{SHORT\_TIMER\_MS}}
+{\footnotesize\ttfamily \#define SHORT\+\_\+\+TIMER\+\_\+\+MS~3}
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178} 
+\index{receiver.c@{receiver.c}!receiver\_state@{receiver\_state}}
+\index{receiver\_state@{receiver\_state}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_state}{receiver\_state}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{receiver_8c_aeb5e52287f5a64a995229e29c736a178}{receiver\+\_\+state}}}
+
+\begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_Connection@{Wait\_Connection}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Wait\_Connection@{Wait\_Connection}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178a2929ab705b4e1b23990cbb194b496b23}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178a2929ab705b4e1b23990cbb194b496b23} 
+Wait\+\_\+\+Connection&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_for\_Packet@{Wait\_for\_Packet}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Wait\_for\_Packet@{Wait\_for\_Packet}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5562a907ad8a9c1e6f571f2c7349ecbf}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5562a907ad8a9c1e6f571f2c7349ecbf} 
+Wait\+\_\+for\+\_\+\+Packet&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_for\_Pipeline@{Wait\_for\_Pipeline}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Wait\_for\_Pipeline@{Wait\_for\_Pipeline}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178a8a4445b074c237002a84118e4725328a}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178a8a4445b074c237002a84118e4725328a} 
+Wait\+\_\+for\+\_\+\+Pipeline&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Send\_Fin\_Ack@{Send\_Fin\_Ack}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Send\_Fin\_Ack@{Send\_Fin\_Ack}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178a0cb55e1e176ecfe597cdc09152299461}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178a0cb55e1e176ecfe597cdc09152299461} 
+Send\+\_\+\+Fin\+\_\+\+Ack&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Wait\_inCase@{Wait\_inCase}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Wait\_inCase@{Wait\_inCase}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5c7e361c16374fa72dc35dbb72fcfd29}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178a5c7e361c16374fa72dc35dbb72fcfd29} 
+Wait\+\_\+in\+Case&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Finished@{Finished}!receiver.c@{receiver.c}}\index{receiver.c@{receiver.c}!Finished@{Finished}}}\Hypertarget{receiver_8c_aeb5e52287f5a64a995229e29c736a178ab68c130eb6caa378c2c394e9054bbb63}\label{receiver_8c_aeb5e52287f5a64a995229e29c736a178ab68c130eb6caa378c2c394e9054bbb63} 
+Finished&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{receiver_8c_abf3a6b6abbe478e75ea6df3d9d1dba0b}\label{receiver_8c_abf3a6b6abbe478e75ea6df3d9d1dba0b} 
+\index{receiver.c@{receiver.c}!add\_data\_to\_buffer@{add\_data\_to\_buffer}}
+\index{add\_data\_to\_buffer@{add\_data\_to\_buffer}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{add\_data\_to\_buffer()}{add\_data\_to\_buffer()}}
+{\footnotesize\ttfamily void add\+\_\+data\+\_\+to\+\_\+buffer (\begin{DoxyParamCaption}\item[{struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}}]{receive\+\_\+buffer }\end{DoxyParamCaption})}
+
+
+
+Adds data from a received packet to the buffer. 
+
+This function processes the received packet and adds its data to the buffer. It calculates the buffer index based on the sequence number and stores the data accordingly. It also updates the indices for the first and last valid buffer positions.
+
+
+\begin{DoxyParams}{Parameters}
+{\em receive\+\_\+buffer} & Pointer to the received protocol packet. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{receiver_8c_ad12cb6ed25a1a8af544cfb52c2b25a2e}\label{receiver_8c_ad12cb6ed25a1a8af544cfb52c2b25a2e} 
+\index{receiver.c@{receiver.c}!is\_data@{is\_data}}
+\index{is\_data@{is\_data}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{is\_data()}{is\_data()}}
+{\footnotesize\ttfamily int is\+\_\+data (\begin{DoxyParamCaption}\item[{struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}}]{receive\+\_\+buffer }\end{DoxyParamCaption})}
+
+
+
+Checks if the incoming packet is a data packet. 
+
+This function checks if the management\+\_\+byte in the packet header is zero, indicating a data packet.
+
+
+\begin{DoxyParams}{Parameters}
+{\em receive\+\_\+buffer} & Pointer to the received protocol packet. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if it\textquotesingle{}s a data packet, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_a603e10550500ba3530d93b200cbabe53}\label{receiver_8c_a603e10550500ba3530d93b200cbabe53} 
+\index{receiver.c@{receiver.c}!is\_duplicate@{is\_duplicate}}
+\index{is\_duplicate@{is\_duplicate}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{is\_duplicate()}{is\_duplicate()}}
+{\footnotesize\ttfamily int is\+\_\+duplicate (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{seq\+\_\+num }\end{DoxyParamCaption})}
+
+
+
+Checks if the incoming sequence number is a duplicate. 
+
+Determines whether the specified sequence number has already been received. This is used to identify and handle duplicate packets.
+
+
+\begin{DoxyParams}{Parameters}
+{\em seq\+\_\+num} & The sequence number to check. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if the sequence number is a duplicate, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_adcca714f63ac705a8afcc4a23b93b137}\label{receiver_8c_adcca714f63ac705a8afcc4a23b93b137} 
+\index{receiver.c@{receiver.c}!is\_FIN@{is\_FIN}}
+\index{is\_FIN@{is\_FIN}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{is\_FIN()}{is\_FIN()}}
+{\footnotesize\ttfamily int is\+\_\+\+FIN (\begin{DoxyParamCaption}\item[{struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}}]{receive\+\_\+buffer }\end{DoxyParamCaption})}
+
+
+
+Checks if the incoming packet is a valid FIN packet. 
+
+This function checks the management\+\_\+byte in the packet header to determine if the FIN bit (second from the right) is set, indicating a FIN packet.
+
+
+\begin{DoxyParams}{Parameters}
+{\em receive\+\_\+buffer} & Pointer to the received protocol packet. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if it\textquotesingle{}s a FIN packet, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_ac777be4472f0072eae59d0746d087d4a}\label{receiver_8c_ac777be4472f0072eae59d0746d087d4a} 
+\index{receiver.c@{receiver.c}!is\_SYNC@{is\_SYNC}}
+\index{is\_SYNC@{is\_SYNC}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{is\_SYNC()}{is\_SYNC()}}
+{\footnotesize\ttfamily int is\+\_\+\+SYNC (\begin{DoxyParamCaption}\item[{struct \mbox{\hyperlink{structprotocol___packet}{protocol\+\_\+\+Packet}} \texorpdfstring{$\ast$}{*}}]{receive\+\_\+buffer }\end{DoxyParamCaption})}
+
+
+
+Checks if the incoming packet is a valid SYNC packet. 
+
+This function checks the management\+\_\+byte in the packet header to determine if the SYNC bit (upper-\/most bit) is set, indicating a SYNC packet.
+
+
+\begin{DoxyParams}{Parameters}
+{\em receive\+\_\+buffer} & Pointer to the received protocol packet. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if it\textquotesingle{}s a SYNC packet, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_a3c04138a5bfe5d72780bb7e82a18e627}\label{receiver_8c_a3c04138a5bfe5d72780bb7e82a18e627} 
+\index{receiver.c@{receiver.c}!main@{main}}
+\index{main@{main}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily int main (\begin{DoxyParamCaption}\item[{int}]{argc,  }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{argv }\end{DoxyParamCaption})}
+
+
+
+Main function for the receiver application. 
+
+This function parses command line arguments to set up the UDP port and destination file. It then calls the rrecv function to start the receiver process.
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of command-\/line arguments. \\
+\hline
+{\em argv} & Array of command-\/line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns the exit status. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_ad2e9228b482b59472ef989421b0a44a5}\label{receiver_8c_ad2e9228b482b59472ef989421b0a44a5} 
+\index{receiver.c@{receiver.c}!receiver\_action\_Send\_Fin\_Ack@{receiver\_action\_Send\_Fin\_Ack}}
+\index{receiver\_action\_Send\_Fin\_Ack@{receiver\_action\_Send\_Fin\_Ack}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_action\_Send\_Fin\_Ack()}{receiver\_action\_Send\_Fin\_Ack()}}
+{\footnotesize\ttfamily void receiver\+\_\+action\+\_\+\+Send\+\_\+\+Fin\+\_\+\+Ack (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Sends a FIN\+\_\+\+ACK packet to the sender. 
+
+This function constructs a FIN\+\_\+\+ACK packet and sends it to the sender. It is called when a FIN packet is received, indicating the end of data transmission. The function also starts a long timer and sets the receiver\textquotesingle{}s state to Wait\+\_\+in\+Case. \Hypertarget{receiver_8c_ad0c95a5f6527d466350443cd81b833a5}\label{receiver_8c_ad0c95a5f6527d466350443cd81b833a5} 
+\index{receiver.c@{receiver.c}!receiver\_action\_Wait\_Connection@{receiver\_action\_Wait\_Connection}}
+\index{receiver\_action\_Wait\_Connection@{receiver\_action\_Wait\_Connection}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_action\_Wait\_Connection()}{receiver\_action\_Wait\_Connection()}}
+{\footnotesize\ttfamily void receiver\+\_\+action\+\_\+\+Wait\+\_\+\+Connection (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the Wait Connection state of the receiver. 
+
+Waits for a SYNC packet from the sender to establish a connection. Upon receiving a SYNC packet, sends a SYNC ACK back to the sender. \Hypertarget{receiver_8c_acb49a1968d8212126e1bcc417cd24180}\label{receiver_8c_acb49a1968d8212126e1bcc417cd24180} 
+\index{receiver.c@{receiver.c}!receiver\_action\_Wait\_for\_Packet@{receiver\_action\_Wait\_for\_Packet}}
+\index{receiver\_action\_Wait\_for\_Packet@{receiver\_action\_Wait\_for\_Packet}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_action\_Wait\_for\_Packet()}{receiver\_action\_Wait\_for\_Packet()}}
+{\footnotesize\ttfamily void receiver\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Packet (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the Wait for Packet state of the receiver. 
+
+Waits for data packets from the sender. Processes received packets, checks for duplicates, and handles SYNC and FIN packets. \Hypertarget{receiver_8c_a1b4281dbfc0af369e5f486568880e50e}\label{receiver_8c_a1b4281dbfc0af369e5f486568880e50e} 
+\index{receiver.c@{receiver.c}!receiver\_action\_Wait\_for\_Pipeline@{receiver\_action\_Wait\_for\_Pipeline}}
+\index{receiver\_action\_Wait\_for\_Pipeline@{receiver\_action\_Wait\_for\_Pipeline}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_action\_Wait\_for\_Pipeline()}{receiver\_action\_Wait\_for\_Pipeline()}}
+{\footnotesize\ttfamily void receiver\+\_\+action\+\_\+\+Wait\+\_\+for\+\_\+\+Pipeline (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Handles the Wait for Pipeline state of the receiver. 
+
+Waits for additional packets in the pipeline. Processes received data packets, checks for duplicates, and handles writing data to the file after a short timer. \Hypertarget{receiver_8c_a6f5855dc7eede31fbd971ab48bf49e55}\label{receiver_8c_a6f5855dc7eede31fbd971ab48bf49e55} 
+\index{receiver.c@{receiver.c}!receiver\_action\_Wait\_inCase@{receiver\_action\_Wait\_inCase}}
+\index{receiver\_action\_Wait\_inCase@{receiver\_action\_Wait\_inCase}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_action\_Wait\_inCase()}{receiver\_action\_Wait\_inCase()}}
+{\footnotesize\ttfamily void receiver\+\_\+action\+\_\+\+Wait\+\_\+in\+Case (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Waits for a long duration in case another FIN packet is received. 
+
+This function waits for a specified long duration to handle any additional FIN packets that may arrive. It ensures that the receiver properly finalizes the connection. \Hypertarget{receiver_8c_a4a41275a0f0717d9912dcecafbcdfdc8}\label{receiver_8c_a4a41275a0f0717d9912dcecafbcdfdc8} 
+\index{receiver.c@{receiver.c}!receiver\_finish@{receiver\_finish}}
+\index{receiver\_finish@{receiver\_finish}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_finish()}{receiver\_finish()}}
+{\footnotesize\ttfamily void receiver\+\_\+finish (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Cleans up resources used by the receiver. 
+
+This function frees the allocated buffer for received bytes, closes the open file (if any), and closes the socket. It is used to clean up resources before the receiver shuts down. \Hypertarget{receiver_8c_a673c8779dec6dfb87eff45cb42cff4bf}\label{receiver_8c_a673c8779dec6dfb87eff45cb42cff4bf} 
+\index{receiver.c@{receiver.c}!receiver\_init@{receiver\_init}}
+\index{receiver\_init@{receiver\_init}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{receiver\_init()}{receiver\_init()}}
+{\footnotesize\ttfamily int receiver\+\_\+init (\begin{DoxyParamCaption}\item[{unsigned short int}]{my\+UDPport,  }\item[{char \texorpdfstring{$\ast$}{*}}]{destination\+File,  }\item[{unsigned long long int}]{write\+Rate }\end{DoxyParamCaption})}
+
+
+
+Initializes the receiver with the specified UDP port, destination file, and write rate. 
+
+Sets up a UDP socket, prepares the destination file for writing, initializes the receiver\textquotesingle{}s window and state, and allocates memory for buffering incoming data.
+
+
+\begin{DoxyParams}{Parameters}
+{\em my\+UDPport} & The UDP port to bind the receiver socket to. \\
+\hline
+{\em destination\+File} & The path to the file where the received data will be written. \\
+\hline
+{\em write\+Rate} & The rate at which data will be written to the file. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 on successful initialization, 0 on failure. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_ab41fdd85753470e49e9439d9e096947b}\label{receiver_8c_ab41fdd85753470e49e9439d9e096947b} 
+\index{receiver.c@{receiver.c}!rrecv@{rrecv}}
+\index{rrecv@{rrecv}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{rrecv()}{rrecv()}}
+{\footnotesize\ttfamily void rrecv (\begin{DoxyParamCaption}\item[{unsigned short int}]{my\+UDPport,  }\item[{char \texorpdfstring{$\ast$}{*}}]{destination\+File,  }\item[{unsigned long long int}]{write\+Rate }\end{DoxyParamCaption})}
+
+
+
+Main state machine for the receiver. 
+
+This function initializes the receiver and then continually processes states as part of the main state machine. Handles different states like waiting for connection, waiting for a packet, processing the packet pipeline, sending a FIN ACK, and a waiting state post-\/\+FIN ACK. This exits once the receiver reaches the Finished state.
+
+
+\begin{DoxyParams}{Parameters}
+{\em my\+UDPport} & The UDP port to bind the receiver socket to. \\
+\hline
+{\em destination\+File} & The path to the file where the received data will be written. \\
+\hline
+{\em write\+Rate} & The rate at which data will be written to the file. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{receiver_8c_af9c984477ed6745b60bf61c97e6fc7f1}\label{receiver_8c_af9c984477ed6745b60bf61c97e6fc7f1} 
+\index{receiver.c@{receiver.c}!setup\_file@{setup\_file}}
+\index{setup\_file@{setup\_file}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{setup\_file()}{setup\_file()}}
+{\footnotesize\ttfamily int setup\+\_\+file (\begin{DoxyParamCaption}\item[{char \texorpdfstring{$\ast$}{*}}]{destination\+File }\end{DoxyParamCaption})}
+
+
+
+Sets up the file for writing received data. 
+
+This function opens the specified file for writing. If the file cannot be opened, an error message is displayed, and the function returns 0. On successful opening, the file pointer is stored in a global variable for later use.
+
+
+\begin{DoxyParams}{Parameters}
+{\em destination\+File} & The path to the file where the received data will be written. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if the file is successfully opened, 0 otherwise. 
+\end{DoxyReturn}
+\Hypertarget{receiver_8c_a0408e8c1a9226ebefed7869f204d054b}\label{receiver_8c_a0408e8c1a9226ebefed7869f204d054b} 
+\index{receiver.c@{receiver.c}!setup\_recv\_window@{setup\_recv\_window}}
+\index{setup\_recv\_window@{setup\_recv\_window}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{setup\_recv\_window()}{setup\_recv\_window()}}
+{\footnotesize\ttfamily void setup\+\_\+recv\+\_\+window (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Initializes the receiver\textquotesingle{}s window for packet processing. 
+
+This function sets up the initial state for the receiver\textquotesingle{}s window, including the sequence number of the next needed packet and the anticipated range of packet sequence numbers. \Hypertarget{receiver_8c_ad4579d3091294ef4fa4d708c15ef7c9c}\label{receiver_8c_ad4579d3091294ef4fa4d708c15ef7c9c} 
+\index{receiver.c@{receiver.c}!setup\_socket@{setup\_socket}}
+\index{setup\_socket@{setup\_socket}!receiver.c@{receiver.c}}
+\doxysubsubsection{\texorpdfstring{setup\_socket()}{setup\_socket()}}
+{\footnotesize\ttfamily int setup\+\_\+socket (\begin{DoxyParamCaption}\item[{unsigned short int}]{my\+UDPport }\end{DoxyParamCaption})}
+
+
+
+Sets up the UDP socket for the receiver. 
+
+Creates a UDP socket, sets it to non-\/blocking mode, and binds it to the specified UDP port. Prepares the socket for receiving data on the given port.
+
+
+\begin{DoxyParams}{Parameters}
+{\em my\+UDPport} & The UDP port number to bind the socket to. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Returns 1 if the socket is set up successfully, 0 otherwise. 
+\end{DoxyReturn}
